@@ -85,6 +85,19 @@ export class CompanyService {
         linkedinUrl: true,
         websiteUrl: true,
         Address: { select: { city: true, state: true } },
+        vagas: {
+          where: { status: 'aberta' },
+          select: {
+            id: true,
+            nome: true,
+            cargo: true,
+            salario: true,
+            area: true,
+            modalidade: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
     if (!company) {

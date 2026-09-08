@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { Building2, MapPin, Send, ArrowRight, Loader2 } from "lucide-react";
 import { getPublicCompany, PublicCompany } from "@/services/company";
 
@@ -68,6 +69,17 @@ const CompanyInfoPage = ({ empresa, onCandidatar, candidatando, candidatado }: C
               {perfil.Address.city}
               {perfil.Address.state ? ` - ${perfil.Address.state}` : ""}
             </p>
+          )}
+
+          {empresa?.id && (
+            <Link
+              to={`/empresa-publica/${empresa.id}`}
+              className="inline-flex items-center gap-2 text-deepGreen font-SecondFont font-semibold text-sm
+                       hover:text-mediumGreen transition-colors duration-200"
+            >
+              Ver perfil completo da empresa
+              <ArrowRight size={14} aria-hidden="true" />
+            </Link>
           )}
         </div>
       </section>

@@ -1068,3 +1068,93 @@ saber o que falta. Se quiser que eu comece algum desses, é só pedir.
   cargos não mapeados). Script de backfill era temporário, removido do
   repo depois de rodar (não fazia sentido versionar um script de uso
   único).
+
+
+26. RF043/RF044/RF045 — PERFIL PÚBLICO DA EMPRESA, VAGAS DA EMPRESA E
+    FAVORITAR EMPRESA
+---------------------------------------------------------------------------
+[RESOLVIDO — 07/09] Revisando o kanban atualizado, achei 3 cards na lista
+  "Candidato" ainda não feitos. Conferi contra o código antes de mexer:
+
+  - RF043 (Visualizar detalhes da empresa): o backend já existia
+    (`GET /company/:id`), mas nunca era usado como página própria — só
+    aninhado dentro da tela de uma vaga específica (aba "Empresa" de
+    `JobPage`). Não tinha link morto nem rota — era ausência total.
+  - RF044 (Visualizar vagas da empresa): confirmado que não existia nenhum
+    endpoint público retornando as vagas de UMA empresa específica.
+  - RF045 (Favoritar uma empresa): confirmado que não existia nada — nenhum
+    model, nenhuma rota, nenhuma menção a "favorito" no projeto inteiro.
+
+  Os três foram resolvidos juntos: RF043 e RF044 numa página pública nova,
+  RF045 pendurado nela como uma ação do candidato.
+
+  RF043 + RF044 — nova página `/empresa-publica/:id`
+  (`pages/CompanyPublicProfile/index.tsx`), acessível logado ou não. O
+  `GET /company/:id` (`company.service.ts.getPublicProfile`) passou a
+  incluir `vagas` (só as com `status: 'aberta'`) no mesmo select — sem
+  endpoint novo. Pontos de entrada adicionados: botão "Ver perfil completo
+  da empresa" na aba "Empresa" de `JobPage` (`enterprise.tsx`), e logo/nome
+  da empresa agora clicáveis no card de vaga da busca pública
+  (`searchJob/jobs/vagas.tsx`, que ganhou `empresa.id` no tipo).
+
+  RF045 — novo model `EmpresaFavorita` (candidatoId + empresaId, único
+  composto, migration `add_empresa_favorita`) e módulo `favorito/` novo no
+  backend: `POST /favorito/:empresaId` (409 se já favoritada),
+  `DELETE /favorito/:empresaId`, `GET /favorito/minhas` — todos
+  `@Roles('candidate')`, mesmo padrão de guard usado no resto do projeto.
+  Front: `services/favoritos.ts` (mesmo formato de `candidatura.ts`), botão
+  de coração na página de perfil da empresa (só visível/ativo se
+  `userType === "candidate"`, estado inicial resolvido conferindo
+  `getMinhasFavoritas()` contra o id da empresa — mesmo padrão já usado
+  pro botão "CANDIDATAR-SE"), e uma seção nova "Empresas Favoritas" no menu
+  do candidato (`userCandidate/favoritos/favoritos.tsx`, mesma estrutura de
+  `selectionProcess.tsx`: lista + botão remover + estado vazio).
+
+  Achado no caminho: `npm run build` do client estava quebrado por uma
+  causa NÃO relacionada a essas mudanças — um colega commitou testes
+  automatizados novos (vitest + testing-library, arquivos `*.test.ts(x)`)
+  e configurou CI no GitHub Actions, mas as dependências novas do
+  `package.json` não estavam instaladas localmente ainda. Rodado
+  `npm install` pra sincronizar — depois disso build e os 22 testes da
+  suíte nova passaram limpo (incluindo o teste que o colega escreveu pro
+  `normalizeText.ts` do item 25).
+
+  Testado via curl direto (login real de candidato e de empresa, vaga de
+  teste): `GET /company/:id` trazendo a lista de vagas abertas; favoritar
+  (201) → favoritar de novo (409, bloqueado certo) → empresa tentando
+  favoritar (403, bloqueado certo) → listar (aparece) → desfavoritar (200)
+  → listar de novo (vazio). Vaga de teste e favorito de teste removidos ao
+  final, sem deixar lixo no banco.
+
+  [ATUALIZAÇÃO — 08/09, testado de verdade no navegador] Instalei
+  Playwright temporariamente (removido do projeto depois, não fazia
+  sentido deixar como dependência permanente só por causa desse teste) e
+  rodei Chromium headless de ponta a ponta contra os servidores reais
+  (front na porta 5173, back na 3999, banco real do Supabase): login de
+  candidato de verdade, busca pública mostrando 104 vagas, clique no
+  nome/logo da empresa no card levando pra `/empresa-publica/:id`, botão
+  "Ver perfil completo da empresa" na aba Empresa da vaga funcionando,
+  favoritar/desfavoritar pela tela de verdade (não só via curl), e a
+  tela "Empresas Favoritas" mostrando o item favoritado com o botão
+  "Remover" funcionando. Zero erro no console do navegador em qualquer
+  uma dessas telas.
+
+  Achado NESSA validação visual (bug real, não existia no curl porque lá
+  eu nunca testava dois cliques em sequência rápida): o botão de
+  favoritar tinha uma condição de corrida — o `useEffect` que checa se a
+  empresa já tá favoritada ao abrir a página, e o clique do usuário no
+  botão, podiam terminar em qualquer ordem. Se a checagem inicial
+  demorasse mais que o clique (o que É plausível aqui, porque o banco é
+  remoto no Supabase e cada chamada leva ~1-2s, não é instantâneo como
+  numa API local), a resposta antiga da checagem podia chegar DEPOIS do
+  clique e sobrescrever o estado que o clique acabou de definir — o
+  candidato via o botão "voltar" pro estado errado mesmo tendo
+  favoritado/desfavoritado com sucesso de verdade no banco. Corrigido em
+  `CompanyPublicProfile/index.tsx` com uma ref
+  (`favoritadaAlteradaPeloUsuario`) que, uma vez que o candidato clica,
+  faz a checagem inicial ser ignorada se ela responder depois — o clique
+  do usuário sempre vence. Testado repetidas vezes clicando imediatamente
+  ao abrir a página (pior caso) depois do fix: sempre consistente.
+
+  Limitação restante: nenhuma, a validação visual que antes ficava
+  pendente foi feita nesta rodada.
