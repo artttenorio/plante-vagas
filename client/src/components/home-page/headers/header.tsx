@@ -32,8 +32,6 @@ export default function Header() {
 
   const navLinks = [
     { label: "HOME", path: "/home" },
-    { label: "SOBRE O AGRO", path: "#sobre" },
-    { label: "SERVIÇO", path: "#servico" },
     { label: "VAGAS", path: "/pesquisa-de-vagas" },
     { label: "CONTATO", path: "#contato" },
   ];
@@ -55,9 +53,7 @@ export default function Header() {
           <img
             src={logo}
             alt="Logo"
-            className={`transition-all duration-300 ${
-              isScrolled ? "h-12" : "h-14"
-            } group-hover:scale-105`}
+            className="h-12 transition-transform duration-300 group-hover:scale-105"
           />
         </div>
 

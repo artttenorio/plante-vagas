@@ -20,6 +20,7 @@ import Maquinas from "./curriculum/maquinas";
 import Tecnologias from "./curriculum/tecnologias";
 import SelectionProcess from "./selectionProcess/selectionProcess";
 import Favoritos from "./favoritos/favoritos";
+import VagasFavoritas from "./vagasFavoritas/vagasFavoritas";
 import ImportCurriculum from "./curriculum/importCurriculum";
 import { CurriculumProvider } from "./curriculumContext";
 import {
@@ -27,6 +28,7 @@ import {
   Clipboard,
   ClipboardList,
   Heart,
+  Bookmark,
   IdCard,
   MapPin,
   KeyRound,
@@ -89,6 +91,12 @@ const SECTIONS: SidebarSection[] = [
     icon: Heart,
     items: [],
   },
+  {
+    id: "vagas-salvas",
+    label: "Vagas Salvas",
+    icon: Bookmark,
+    items: [],
+  },
 ];
 
 export default function Page() {
@@ -145,6 +153,8 @@ export default function Page() {
         return <SelectionProcess />;
       case "empresas-favoritas":
         return <Favoritos />;
+      case "vagas-salvas":
+        return <VagasFavoritas />;
       case "importar-curriculo":
         return <ImportCurriculum />;
       default:

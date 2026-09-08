@@ -12,7 +12,7 @@ type Props = {
 
 export default function EtapasDisplay({ etapas, vagaId, movendoId, onExcluir, onAtualizar, onMover }: Props) {
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="flex flex-col gap-6 w-full max-w-[95%] mx-auto">
       {etapas.map((etapa, index) => (
         <Etapa
           key={etapa.id}

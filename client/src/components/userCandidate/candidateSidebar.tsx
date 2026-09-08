@@ -54,13 +54,18 @@ export default function CandidateSidebar({ sections, activeTab, onSelectTab, mob
       )}
 
       <aside
-        className={`fixed top-0 left-0 h-screen w-72 bg-oliveGreen text-deepGreen flex flex-col z-50
+        className={`fixed top-0 left-0 h-screen w-72 bg-paleGreen text-deepGreen flex flex-col z-50
                    transition-transform duration-300 ease-in-out
                    ${mobileOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
       >
         {/* Logo + close (mobile) */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-deepGreen/15">
-          <img src={logo} alt="Plante Vagas" className="h-9" />
+          <img
+            src={logo}
+            alt="Plante Vagas"
+            className="h-12 cursor-pointer"
+            onClick={() => navigate("/")}
+          />
           <button onClick={onCloseMobile} className="md:hidden text-deepGreen/70 hover:text-deepGreen">
             <X size={20} aria-hidden="true" />
           </button>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, Image as ImageIcon, ArrowLeft, FileText, Loader2, Facebook, Instagram, Linkedin, Globe } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +20,20 @@ const EditProfileForm = () => {
   const [linkedinUrl, setLinkedinUrl] = useState(user.linkedinUrl || "");
   const [websiteUrl, setWebsiteUrl] = useState(user.websiteUrl || "");
   const [salvando, setSalvando] = useState(false);
+
+  // Mesmo caso de companySettingsForm.tsx: `user` chega assíncrono do
+  // contexto, então o valor inicial do useState acima fica travado em
+  // vazio. Resincroniza os campos assim que o dado real da empresa chega
+  // — sem isso, salvar sem mexer em nada apaga descrição/redes sociais.
+  useEffect(() => {
+    setLogoPreview(user.logoUrl || null);
+    setBannerPreview(user.bannerUrl || null);
+    setDescription(user.description || "");
+    setFacebookUrl(user.facebookUrl || "");
+    setInstagramUrl(user.instagramUrl || "");
+    setLinkedinUrl(user.linkedinUrl || "");
+    setWebsiteUrl(user.websiteUrl || "");
+  }, [user]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

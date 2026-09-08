@@ -124,7 +124,7 @@ export default function MainCandidates() {
   return (
     <>
     <div className="min-h-screen bg-gray-50 pt-20 pb-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <button
           onClick={() => navigate(`/gerenciar-processo?vagaId=${vagaId}`)}
           className="flex items-center gap-2 text-gray-600 hover:text-deepGreen transition-colors duration-200 pt-8 font-SecondFont text-sm"

@@ -10,7 +10,7 @@ const HeaderLogged = () => {
           <img
             src={logo}
             alt="Logo"
-            className="h-14"
+            className="h-12"
             style={{ cursor: "pointer" }}
             onClick={() => navigate("/")}
           />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Link2, Bookmark, BookmarkCheck, Briefcase, Building2, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -6,14 +6,30 @@ import JobInformation from "../company-job-infomation/job-information";
 import CompanyInfoPage from "../company-job-infomation/enterprise";
 import type { Vaga } from "@/services/vaga";
 import { candidatarSe } from "@/services/candidatura";
+import { favoritarVaga, desfavoritarVaga, getMinhasVagasFavoritas } from "@/services/favoritosVaga";
 
 const MainJobPage = ({ vaga }: { vaga: Vaga }) => {
   const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savedAlteradoPeloUsuario = useRef(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("vaga");
   const [candidatando, setCandidatando] = useState(false);
   const [candidatado, setCandidatado] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem("userType") !== "candidate") return;
+    getMinhasVagasFavoritas()
+      .then((favoritas) => {
+        // Mesma corrida do favoritar empresa: se o candidato já clicou
+        // em Salvar enquanto essa checagem inicial ainda tava em
+        // andamento, não sobrescreve o clique com uma resposta atrasada.
+        if (savedAlteradoPeloUsuario.current) return;
+        setSaved(favoritas.some((f) => f.vagaId === vaga.id));
+      })
+      .catch(() => {});
+  }, [vaga.id]);
 
   const handleCandidatar = async () => {
     const token = localStorage.getItem("token");
@@ -43,20 +59,35 @@ const MainJobPage = ({ vaga }: { vaga: Vaga }) => {
     }
   };
 
-  const toggleBookmark = () => {
-    const newSavedState = !saved;
-    setSaved(newSavedState);
+  const toggleBookmark = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Você precisa fazer login pra salvar uma vaga");
+      return;
+    }
 
-    if (newSavedState) {
-      toast.success("Vaga salva!", {
-        description: "Adicionada à sua lista de vagas salvas",
-        duration: 3000,
-      });
-    } else {
-      toast.info("Vaga removida", {
-        description: "Removida da sua lista de vagas salvas",
-        duration: 3000,
-      });
+    savedAlteradoPeloUsuario.current = true;
+    setSaving(true);
+    try {
+      if (saved) {
+        await desfavoritarVaga(vaga.id);
+        setSaved(false);
+        toast.info("Vaga removida", {
+          description: "Removida da sua lista de vagas salvas",
+          duration: 3000,
+        });
+      } else {
+        await favoritarVaga(vaga.id);
+        setSaved(true);
+        toast.success("Vaga salva!", {
+          description: "Adicionada à sua lista de vagas salvas",
+          duration: 3000,
+        });
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao salvar vaga");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -107,8 +138,9 @@ const MainJobPage = ({ vaga }: { vaga: Vaga }) => {
 
             <button
               onClick={toggleBookmark}
+              disabled={saving}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-SecondFont text-sm font-medium
-                       transition-all duration-300 ${
+                       transition-all duration-300 disabled:opacity-60 ${
                          saved
                            ? "bg-deepGreen text-white"
                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"

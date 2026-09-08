@@ -41,7 +41,7 @@ export default function CandidateResumeView() {
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20 pb-16 px-4 sm:px-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <button
           onClick={() => navigate(backQuery ? `/candidatos?${backQuery}` : "/candidatos")}
           className="flex items-center gap-2 text-sm text-gray-600 hover:text-deepGreen transition-colors duration-200 mb-6"

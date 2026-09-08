@@ -37,11 +37,11 @@ describe('App (smoke)', () => {
       .expect('Hello World!');
   });
 
-  it('GET /vaga/find/all responds with 200 and a list (public route)', () => {
+  it('GET /vaga/find/all responds with 200 and a paginated list (public route)', () => {
     return request(app.getHttpServer())
       .get('/vaga/find/all')
       .expect(200)
-      .expect([]);
+      .expect({ vagas: [], total: 0, totalPaginas: 1, paginaAtual: 1 });
   });
 
   it('POST /vaga/create without a token is rejected (401)', () => {
