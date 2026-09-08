@@ -6,6 +6,7 @@ import RegisterUserTwo from "@/pages/register/register-2";
 import RegisterUserThree from "@/pages/register/register-3";
 import JobPage from "@/pages/JobPage";
 import SearchJobs from "@/pages/Serachjob";
+import CompanyPublicProfile from "@/pages/CompanyPublicProfile";
 import Profile from "@/pages/userCandidate";
 import { RegisterProvider } from "@/components/register/RegisterContext";
 import PrivateRoute from "./privateRoute";
@@ -35,6 +36,7 @@ export default function Router() {
             <Route path="/home" element={<HomePage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/pagina-vaga/:id" element={<JobPage />} />
+            <Route path="/empresa-publica/:id" element={<CompanyPublicProfile />} />
             <Route path="/pesquisa-de-vagas" element={<SearchJobs />} />
             <Route path="/register" element={<RegisterUserOne />} />
             <Route path="/register-2" element={<RegisterUserTwo />} />

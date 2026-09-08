@@ -19,12 +19,14 @@ import Culturas from "./curriculum/culturas";
 import Maquinas from "./curriculum/maquinas";
 import Tecnologias from "./curriculum/tecnologias";
 import SelectionProcess from "./selectionProcess/selectionProcess";
+import Favoritos from "./favoritos/favoritos";
 import ImportCurriculum from "./curriculum/importCurriculum";
 import { CurriculumProvider } from "./curriculumContext";
 import {
   User,
   Clipboard,
   ClipboardList,
+  Heart,
   IdCard,
   MapPin,
   KeyRound,
@@ -81,6 +83,12 @@ const SECTIONS: SidebarSection[] = [
     icon: ClipboardList,
     items: [],
   },
+  {
+    id: "empresas-favoritas",
+    label: "Empresas Favoritas",
+    icon: Heart,
+    items: [],
+  },
 ];
 
 export default function Page() {
@@ -135,6 +143,8 @@ export default function Page() {
         return <Tecnologias />;
       case "processos-seletivos":
         return <SelectionProcess />;
+      case "empresas-favoritas":
+        return <Favoritos />;
       case "importar-curriculo":
         return <ImportCurriculum />;
       default:

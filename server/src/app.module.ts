@@ -10,6 +10,7 @@ import { CompanyModule } from './api/company/company.module';
 import { CurriculumModule } from './api/curriculum/curriculum.module';
 import { VagaModule } from './api/vaga/vaga.module';
 import { CandidaturaModule } from './api/candidatura/candidatura.module';
+import { FavoritoModule } from './api/favorito/favorito.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CandidaturaModule } from './api/candidatura/candidatura.module';
     CurriculumModule,
     VagaModule,
     CandidaturaModule,
+    FavoritoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

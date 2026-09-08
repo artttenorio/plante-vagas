@@ -39,6 +39,7 @@ model UserCandidate {
   Address         Address?
   curriculo       Curriculo?
   candidatoEtapas CandidatoEtapa[]
+  empresasFavoritas EmpresaFavorita[]
 }
 
 model AddressCompany {
@@ -80,6 +81,18 @@ model UserCompany {
   createdAt       DateTime @default(now())
   Address       AddressCompany?
   vagas         Vaga[]
+  candidatosFavoritaram EmpresaFavorita[]
+}
+
+model EmpresaFavorita {
+  id          Int      @id @default(autoincrement())
+  candidatoId Int
+  empresaId   Int
+  candidato   UserCandidate @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
+  empresa     UserCompany   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([candidatoId, empresaId])
 }
 
 model Vaga {

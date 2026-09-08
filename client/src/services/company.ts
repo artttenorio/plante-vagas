@@ -33,6 +33,16 @@ export interface Company {
   Address?: CompanyAddress | null;
 }
 
+export interface VagaResumo {
+  id: number;
+  nome: string;
+  cargo: string;
+  salario?: number | null;
+  area?: string | null;
+  modalidade?: string | null;
+  createdAt: string;
+}
+
 export interface PublicCompany {
   id: number;
   name: string;
@@ -46,6 +56,7 @@ export interface PublicCompany {
   linkedinUrl?: string | null;
   websiteUrl?: string | null;
   Address?: { city: string; state: string } | null;
+  vagas: VagaResumo[];
 }
 
 const publicCompanyCache = new Map<number, PublicCompany>();
