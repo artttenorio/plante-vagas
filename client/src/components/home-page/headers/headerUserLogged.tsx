@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Home, LogOut, ChevronRight, User, Search, Menu } from "lucide-react";
-import logo from "../../../assets/images/logo.png";
 import { clearSession } from "../../../services/api";
 
 const tabLabels: Record<string, string> = {
@@ -42,20 +41,14 @@ const HeaderLogged = ({
   return (
     <header className="fixed top-0 left-0 right-0 md:left-72 bg-white shadow-md py-3 px-4 sm:px-6 z-30">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 md:hidden">
+        <div className="flex items-center gap-3">
           <button
             onClick={onOpenMenu}
             aria-label="Abrir menu"
-            className="text-deepGreen p-1 -ml-1"
+            className="md:hidden text-deepGreen p-1 -ml-1"
           >
             <Menu size={24} aria-hidden="true" />
           </button>
-          <img
-            src={logo}
-            alt="Logo"
-            className="h-10 cursor-pointer"
-            onClick={() => navigate("/")}
-          />
         </div>
 
         <div className="hidden sm:flex items-center gap-4">

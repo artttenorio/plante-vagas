@@ -5,6 +5,7 @@ import { UpdateCompanyProfileDto } from './dto/update-company-profile.dto';
 import { UpdateCompanyCadastroDto } from './dto/update-company-cadastro.dto';
 import { Company } from './entities/company.entity';
 import * as bcrypt from 'bcrypt';
+import { normalizeText } from '../../common/normalizeText';
 
 @Injectable()
 export class CompanyService {
@@ -36,6 +37,8 @@ export class CompanyService {
       data: {
         ...companyData,
         password: hashedPassword,
+        fantasyNameBusca: normalizeText(companyData.fantasyName),
+        nameBusca: normalizeText(companyData.name),
         openingDate: new Date(companyData.openingDate),
         Address: {
           create: {
@@ -144,6 +147,8 @@ export class CompanyService {
       data: {
         ...rest,
         ...(hashedPassword ? { password: hashedPassword } : {}),
+        ...(rest.fantasyName ? { fantasyNameBusca: normalizeText(rest.fantasyName) } : {}),
+        ...(rest.name ? { nameBusca: normalizeText(rest.name) } : {}),
         ...(openingDate ? { openingDate: new Date(openingDate) } : {}),
         ...(address
           ? {

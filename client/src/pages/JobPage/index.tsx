@@ -69,21 +69,34 @@ const JobPage = () => {
 
             {vaga && (
               <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="w-28 h-28 bg-white rounded-2xl shadow-lg flex items-center justify-center overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => vaga.empresa?.id && navigate(`/empresa-publica/${vaga.empresa.id}`)}
+                  disabled={!vaga.empresa?.id}
+                  title={nomeEmpresa ? `Ver perfil de ${nomeEmpresa}` : undefined}
+                  className="w-28 h-28 bg-white rounded-2xl shadow-lg flex items-center justify-center overflow-hidden
+                           transition-transform duration-300 hover:scale-105 disabled:hover:scale-100"
+                >
                   {empresa?.logoUrl ? (
                     <img src={empresa.logoUrl} alt={`Logo de ${nomeEmpresa}`} className="w-full h-full object-cover" />
                   ) : (
                     <Building2 size={48} className="text-gray-300" />
                   )}
-                </div>
+                </button>
                 <div className="text-center md:text-left">
                   <span className="inline-flex items-center gap-2 bg-white/20 text-white px-3 py-1 rounded-full text-xs font-SecondFont mb-3">
                     <Building2 size={14} />
                     Agronegócio
                   </span>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white font-PrimaryFont">
+                  <button
+                    type="button"
+                    onClick={() => vaga.empresa?.id && navigate(`/empresa-publica/${vaga.empresa.id}`)}
+                    disabled={!vaga.empresa?.id}
+                    className="block text-2xl sm:text-3xl md:text-4xl font-bold text-white font-PrimaryFont
+                             hover:underline underline-offset-4 disabled:hover:no-underline text-left"
+                  >
                     {nomeEmpresa || vaga.nome}
-                  </h1>
+                  </button>
                   <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-3 text-white/80 font-SecondFont text-sm">
                     <span className="flex items-center gap-2">
                       <Clock size={16} />

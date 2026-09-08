@@ -40,6 +40,7 @@ model UserCandidate {
   curriculo       Curriculo?
   candidatoEtapas CandidatoEtapa[]
   empresasFavoritas EmpresaFavorita[]
+  vagasFavoritadas VagaFavorita[]
 }
 
 model AddressCompany {
@@ -70,6 +71,11 @@ model UserCompany {
   description     String
   socialReason    String
   fantasyName     String
+  // fantasyNameBusca/nameBusca: mesma ideia do Vaga.nomeBusca — versão
+  // normalizada (sem acento, minúscula) usada só pra busca tolerante a
+  // acento no backend.
+  fantasyNameBusca String?
+  nameBusca        String?
   phone           String
   logoUrl         String?
   bannerUrl       String?
@@ -95,10 +101,26 @@ model EmpresaFavorita {
   @@unique([candidatoId, empresaId])
 }
 
+model VagaFavorita {
+  id          Int      @id @default(autoincrement())
+  candidatoId Int
+  vagaId      Int
+  candidato   UserCandidate @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
+  vaga        Vaga          @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([candidatoId, vagaId])
+}
+
 model Vaga {
   id         Int     @id @default(autoincrement())
   nome       String
   cargo      String
+  // nomeBusca/cargoBusca: nome/cargo normalizados (sem acento, minúsculo),
+  // recalculados no create/update/duplicar — usados só pra filtrar a busca
+  // pública tolerante a acento no backend, nunca exibidos pro usuário.
+  nomeBusca  String?
+  cargoBusca String?
   descricao  String
   salario    Float?
   status     String  @default("aberta")
@@ -111,6 +133,7 @@ model Vaga {
   requisitos        Requisito[]
   etapas            EtapaProcessoSeletivo[]
   processoSeletivo  ProcessoSeletivo?
+  candidatosFavoritaram VagaFavorita[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

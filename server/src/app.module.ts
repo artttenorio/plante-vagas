@@ -11,6 +11,7 @@ import { CurriculumModule } from './api/curriculum/curriculum.module';
 import { VagaModule } from './api/vaga/vaga.module';
 import { CandidaturaModule } from './api/candidatura/candidatura.module';
 import { FavoritoModule } from './api/favorito/favorito.module';
+import { FavoritoVagaModule } from './api/favorito-vaga/favorito-vaga.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { FavoritoModule } from './api/favorito/favorito.module';
     VagaModule,
     CandidaturaModule,
     FavoritoModule,
+    FavoritoVagaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import Footer from "@/components/home-page/footer/footer";
 import Header from "@/components/home-page/headers/header";
 import FilterBar from "@/components/searchJob/filterBar/filterBar";
 import Vagas from "@/components/searchJob/jobs/vagas";
-import { getAllVagas, type Vaga } from "@/services/vaga";
-import { normalizeText } from "@/utils/normalizeText";
+import { buscarVagas, getRegioesComVagaAberta, type Vaga } from "@/services/vaga";
 import { Briefcase, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 const ORDENACOES = [
@@ -19,8 +18,11 @@ const ITENS_POR_PAGINA = 10;
 const SearchJobs = () => {
   const [searchParams] = useSearchParams();
   const [vagas, setVagas] = useState<Vaga[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(1);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [regioes, setRegioes] = useState<string[]>([]);
   const [busca, setBusca] = useState(searchParams.get("busca") ?? "");
   const [buscaInput, setBuscaInput] = useState(busca);
   const [regiao, setRegiao] = useState("");
@@ -33,54 +35,26 @@ const SearchJobs = () => {
   const [paginaAtual, setPaginaAtual] = useState(1);
 
   useEffect(() => {
-    getAllVagas()
-      .then(setVagas)
-      .catch((e) => setErro(e.message || "Erro ao buscar vagas"))
-      .finally(() => setLoading(false));
+    getRegioesComVagaAberta()
+      .then(setRegioes)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
     setPaginaAtual(1);
   }, [busca, regiao, area, modalidade, ordenacao]);
 
-  const regioes = useMemo(
-    () => [...new Set(vagas.map((v) => v.empresa?.Address?.city).filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b)),
-    [vagas],
-  );
-
-  const vagasExibidas = useMemo(() => {
-    const buscaLower = normalizeText(busca.trim());
-    const filtradas = vagas.filter((v) => {
-      const bateBusca =
-        !buscaLower ||
-        normalizeText(v.nome).includes(buscaLower) ||
-        normalizeText(v.cargo).includes(buscaLower) ||
-        (v.empresa?.fantasyName && normalizeText(v.empresa.fantasyName).includes(buscaLower)) ||
-        (v.empresa?.name && normalizeText(v.empresa.name).includes(buscaLower));
-      const bateRegiao = !regiao || v.empresa?.Address?.city === regiao;
-      const bateArea = !area || v.area === area;
-      const bateModalidade = !modalidade || v.modalidade === modalidade;
-      return bateBusca && bateRegiao && bateArea && bateModalidade;
-    });
-
-    return [...filtradas].sort((a, b) => {
-      switch (ordenacao) {
-        case "salario-maior":
-          return (b.salario ?? 0) - (a.salario ?? 0);
-        case "salario-menor":
-          return (a.salario ?? Infinity) - (b.salario ?? Infinity);
-        case "recentes":
-        default:
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }
-    });
-  }, [vagas, busca, regiao, area, modalidade, ordenacao]);
-
-  const totalPaginas = Math.max(1, Math.ceil(vagasExibidas.length / ITENS_POR_PAGINA));
-  const vagasPaginadas = useMemo(
-    () => vagasExibidas.slice((paginaAtual - 1) * ITENS_POR_PAGINA, paginaAtual * ITENS_POR_PAGINA),
-    [vagasExibidas, paginaAtual],
-  );
+  useEffect(() => {
+    setLoading(true);
+    buscarVagas({ busca, regiao, area, modalidade, ordenacao, pagina: paginaAtual, itensPorPagina: ITENS_POR_PAGINA })
+      .then((resultado) => {
+        setVagas(resultado.vagas);
+        setTotal(resultado.total);
+        setTotalPaginas(resultado.totalPaginas);
+      })
+      .catch((e) => setErro(e.message || "Erro ao buscar vagas"))
+      .finally(() => setLoading(false));
+  }, [busca, regiao, area, modalidade, ordenacao, paginaAtual]);
 
   return (
     <>
@@ -88,11 +62,11 @@ const SearchJobs = () => {
 
       <main className="pt-20 min-h-screen bg-gray-50">
         {/* Hero Section */}
-        <div className="bg-gradient-to-br from-deepGreen to-mediumGreen py-12 sm:py-16">
+        <div className="bg-gradient-to-br from-amber-600 to-[#FCCE41] py-12 sm:py-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
             <div className="inline-flex items-center gap-2 bg-white/20 text-white px-4 py-2 rounded-full text-sm font-SecondFont font-medium mb-4">
               <Briefcase size={16} />
-              {vagasExibidas.length} vaga{vagasExibidas.length !== 1 ? "s" : ""} encontrada{vagasExibidas.length !== 1 ? "s" : ""}
+              {total} vaga{total !== 1 ? "s" : ""} encontrada{total !== 1 ? "s" : ""}
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white font-PrimaryFont mb-4">
               Encontre sua vaga ideal
@@ -143,9 +117,9 @@ const SearchJobs = () => {
                   Vagas disponíveis
                 </h2>
                 <p className="text-gray-600 font-SecondFont mt-1">
-                  {vagasExibidas.length === 0
+                  {total === 0
                     ? "Mostrando 0 resultados"
-                    : `Mostrando ${(paginaAtual - 1) * ITENS_POR_PAGINA + 1}-${Math.min(paginaAtual * ITENS_POR_PAGINA, vagasExibidas.length)} de ${vagasExibidas.length} resultados`}
+                    : `Mostrando ${(paginaAtual - 1) * ITENS_POR_PAGINA + 1}-${Math.min(paginaAtual * ITENS_POR_PAGINA, total)} de ${total} resultados`}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -177,23 +151,19 @@ const SearchJobs = () => {
             )}
 
             {/* Empty State */}
-            {!loading && !erro && vagas.length === 0 && (
+            {!loading && !erro && total === 0 && (
               <div className="text-center py-20 text-gray-500 font-SecondFont">
-                Nenhuma vaga disponível no momento.
-              </div>
-            )}
-
-            {!loading && !erro && vagas.length > 0 && vagasExibidas.length === 0 && (
-              <div className="text-center py-20 text-gray-500 font-SecondFont">
-                Nenhuma vaga encontrada pra essa busca.
+                {busca || regiao || area || modalidade
+                  ? "Nenhuma vaga encontrada pra essa busca."
+                  : "Nenhuma vaga disponível no momento."}
               </div>
             )}
 
             {/* Jobs List */}
-            {!loading && !erro && vagasExibidas.length > 0 && (
+            {!loading && !erro && total > 0 && (
               <>
                 <div className="space-y-6">
-                  {vagasPaginadas.map((vaga) => (
+                  {vagas.map((vaga) => (
                     <Vagas
                       key={vaga.id}
                       id={vaga.id}

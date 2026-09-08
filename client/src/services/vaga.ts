@@ -65,11 +65,9 @@ export interface Vaga {
 }
 
 const vagaCache = new Map<number, Vaga>();
-let allVagasCache: Vaga[] | null = null;
 let vagasByEmpresaCache: Vaga[] | null = null;
 
 function invalidateVagaListCaches() {
-  allVagasCache = null;
   vagasByEmpresaCache = null;
 }
 
@@ -89,17 +87,54 @@ export async function createVaga(data: VagaPayload): Promise<Vaga> {
   return response.json();
 }
 
-export async function getAllVagas(): Promise<Vaga[]> {
-  if (allVagasCache) return allVagasCache;
+export interface BuscarVagasParams {
+  busca?: string;
+  regiao?: string;
+  area?: string;
+  modalidade?: string;
+  ordenacao?: string;
+  pagina?: number;
+  itensPorPagina?: number;
+}
 
-  const response = await authFetch(`${VAGA_URL}/find/all`);
+export interface BuscarVagasResultado {
+  vagas: Vaga[];
+  total: number;
+  totalPaginas: number;
+  paginaAtual: number;
+}
+
+export async function buscarVagas(params: BuscarVagasParams): Promise<BuscarVagasResultado> {
+  const query = new URLSearchParams();
+  if (params.busca) query.set("busca", params.busca);
+  if (params.regiao) query.set("regiao", params.regiao);
+  if (params.area) query.set("area", params.area);
+  if (params.modalidade) query.set("modalidade", params.modalidade);
+  if (params.ordenacao) query.set("ordenacao", params.ordenacao);
+  if (params.pagina) query.set("pagina", String(params.pagina));
+  if (params.itensPorPagina) query.set("itensPorPagina", String(params.itensPorPagina));
+
+  const response = await authFetch(`${VAGA_URL}/find/all?${query.toString()}`);
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || "Erro ao buscar vagas");
   }
-  const vagas = await response.json();
-  allVagasCache = vagas;
-  return vagas;
+  return response.json();
+}
+
+let regioesCache: string[] | null = null;
+
+export async function getRegioesComVagaAberta(): Promise<string[]> {
+  if (regioesCache) return regioesCache;
+
+  const response = await authFetch(`${VAGA_URL}/find/regioes`);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Erro ao buscar regiões");
+  }
+  const regioes = await response.json();
+  regioesCache = regioes;
+  return regioes;
 }
 
 export async function getVagaById(id: number): Promise<Vaga> {

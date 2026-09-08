@@ -88,40 +88,40 @@ const CompanyPublicProfile = () => {
     <>
       <Header />
 
-      <main className="pt-20 min-h-screen bg-gray-50">
-        {/* Hero Banner */}
-        <div className="relative bg-gradient-to-br from-deepGreen via-mediumGreen to-deepGreen">
-          {empresa?.bannerUrl && (
-            <div className="absolute inset-0 opacity-30">
-              <img src={empresa.bannerUrl} alt="Banner da empresa" className="w-full h-full object-cover" />
-            </div>
-          )}
+      <main className="pt-24 pb-16 min-h-screen bg-gray-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-gray-500 hover:text-deepGreen mb-6
+                     transition-colors duration-300 font-SecondFont text-sm"
+          >
+            <ArrowLeft size={18} />
+            Voltar
+          </button>
 
-          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-2 text-white/80 hover:text-white mb-8
-                       transition-colors duration-300 font-SecondFont text-sm"
-            >
-              <ArrowLeft size={18} />
-              Voltar
-            </button>
+          {/* Cabeçalho da empresa — banner com margem, como um cartão */}
+          <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-deepGreen via-mediumGreen to-deepGreen mb-8">
+            {empresa?.bannerUrl && (
+              <div className="absolute inset-0 opacity-30">
+                <img src={empresa.bannerUrl} alt="Banner da empresa" className="w-full h-full object-cover" />
+              </div>
+            )}
 
             {empresa && (
-              <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="w-28 h-28 bg-white rounded-2xl shadow-lg flex items-center justify-center overflow-hidden">
+              <div className="relative flex flex-col md:flex-row items-center gap-6 p-6 sm:p-10">
+                <div className="w-24 h-24 bg-white rounded-2xl shadow-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                   {empresa.logoUrl ? (
                     <img src={empresa.logoUrl} alt={`Logo de ${nomeEmpresa}`} className="w-full h-full object-cover" />
                   ) : (
-                    <Building2 size={48} className="text-gray-300" />
+                    <Building2 size={40} className="text-gray-300" />
                   )}
                 </div>
                 <div className="text-center md:text-left flex-1">
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white font-PrimaryFont">
+                  <h1 className="text-xl sm:text-2xl font-bold text-white font-PrimaryFont">
                     {nomeEmpresa}
                   </h1>
                   {empresa.Address?.city && (
-                    <p className="flex items-center justify-center md:justify-start gap-2 mt-3 text-white/80 font-SecondFont text-sm">
+                    <p className="flex items-center justify-center md:justify-start gap-2 mt-2 text-white/80 font-SecondFont text-sm">
                       <MapPin size={16} />
                       {empresa.Address.city}
                       {empresa.Address.state ? ` - ${empresa.Address.state}` : ""}
@@ -134,7 +134,7 @@ const CompanyPublicProfile = () => {
                     onClick={handleFavoritar}
                     disabled={favoritando}
                     className={`flex items-center gap-2 px-5 py-3 rounded-xl font-SecondFont font-semibold
-                             transition-all duration-300 disabled:opacity-60 ${
+                             transition-all duration-300 disabled:opacity-60 flex-shrink-0 ${
                                favoritada
                                  ? "bg-white text-red-600 hover:bg-red-50"
                                  : "bg-white/10 text-white border border-white/30 hover:bg-white/20"
@@ -147,10 +147,7 @@ const CompanyPublicProfile = () => {
               </div>
             )}
           </div>
-        </div>
 
-        {/* Main Content */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
           {loading && (
             <div className="flex flex-col items-center justify-center py-20 text-gray-500 font-SecondFont">
               <Loader2 size={32} className="animate-spin text-mediumGreen mb-3" />
@@ -162,28 +159,25 @@ const CompanyPublicProfile = () => {
             <div className="text-center py-20 text-red-600 font-SecondFont">{erro}</div>
           )}
 
+          {/* Corpo — um "documento" só, com seções separadas por linha, não cards soltos */}
           {!loading && !erro && empresa && (
-            <>
-              {/* Sobre */}
-              <section className="mb-12">
-                <h2 className="text-xl font-bold text-deepGreen font-PrimaryFont mb-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+              <section className="p-6 sm:p-10">
+                <h2 className="text-sm font-bold text-gray-400 font-SecondFont uppercase tracking-wide mb-3">
                   Sobre a empresa
                 </h2>
-                <div className="bg-white rounded-xl p-6 border border-gray-100">
-                  {empresa.description ? (
-                    <p className="font-SecondFont text-gray-700 leading-relaxed">{empresa.description}</p>
-                  ) : (
-                    <p className="font-SecondFont text-gray-500 text-sm">
-                      Essa empresa ainda não preencheu uma descrição de perfil.
-                    </p>
-                  )}
-                </div>
+                {empresa.description ? (
+                  <p className="font-SecondFont text-gray-700 leading-relaxed">{empresa.description}</p>
+                ) : (
+                  <p className="font-SecondFont text-gray-500 text-sm">
+                    Essa empresa ainda não preencheu uma descrição de perfil.
+                  </p>
+                )}
               </section>
 
-              {/* Redes sociais */}
               {socialLinks.length > 0 && (
-                <section className="mb-12">
-                  <h2 className="text-xl font-bold text-deepGreen font-PrimaryFont mb-4">
+                <section className="p-6 sm:p-10 border-t border-gray-100">
+                  <h2 className="text-sm font-bold text-gray-400 font-SecondFont uppercase tracking-wide mb-4">
                     Redes Sociais
                   </h2>
                   <div className="flex flex-wrap gap-3">
@@ -206,18 +200,15 @@ const CompanyPublicProfile = () => {
                 </section>
               )}
 
-              {/* Vagas abertas */}
-              <section>
-                <h2 className="text-xl font-bold text-deepGreen font-PrimaryFont mb-6 flex items-center gap-2">
-                  <Briefcase size={20} />
+              <section className="p-6 sm:p-10 border-t border-gray-100">
+                <h2 className="text-sm font-bold text-gray-400 font-SecondFont uppercase tracking-wide mb-6 flex items-center gap-2">
+                  <Briefcase size={16} />
                   Vagas abertas ({empresa.vagas.length})
                 </h2>
                 {empresa.vagas.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-2xl border border-gray-100">
-                    <p className="text-gray-500 font-SecondFont">
-                      {nomeEmpresa} não tem nenhuma vaga aberta no momento.
-                    </p>
-                  </div>
+                  <p className="text-gray-500 font-SecondFont text-sm">
+                    {nomeEmpresa} não tem nenhuma vaga aberta no momento.
+                  </p>
                 ) : (
                   <div className="space-y-6">
                     {empresa.vagas.map((vaga) => (
@@ -236,7 +227,7 @@ const CompanyPublicProfile = () => {
                   </div>
                 )}
               </section>
-            </>
+            </div>
           )}
         </div>
       </main>

@@ -180,7 +180,10 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, movendo, onExcl
   return (
     <div id={`etapa-${etapa.id}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 font-SecondFont scroll-mt-24">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-lg font-bold text-deepGreen font-PrimaryFont break-words">{etapa.nome}</h2>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="bg-gray-100 text-gray-600 text-sm w-7 h-7 flex items-center justify-center rounded-full flex-shrink-0">{index}</span>
+          <h2 className="text-lg font-bold text-deepGreen font-PrimaryFont break-words">{etapa.nome}</h2>
+        </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="flex flex-col">
@@ -203,7 +206,6 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, movendo, onExcl
               <ChevronDown size={16} aria-hidden="true" />
             </button>
           </div>
-          <span className="bg-gray-100 text-gray-600 text-sm px-3 py-1 rounded-full">{index}</span>
           <span className="bg-paleGreen/50 text-deepGreen text-sm px-3 py-1 rounded-full capitalize">{etapa.status}</span>
         </div>
       </div>

@@ -5,11 +5,12 @@ import {
   Body,
   Patch,
   Param,
+  Query,
   Delete,
   UseGuards,
   Req,
 } from '@nestjs/common';
-import { VagaService } from './vaga.service';
+import { VagaService, FindAllVagaQuery } from './vaga.service';
 import { CreateVagaDto, ProcessoSeletivoDto } from './dto/create-vaga.dto';
 import { UpdateVagaDto } from './dto/update-vaga.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt.auth.guard';
@@ -29,8 +30,13 @@ export class VagaController {
   }
 
   @Get('find/all')
-  async findAll() {
-    return this.vagaService.findAll();
+  async findAll(@Query() query: FindAllVagaQuery) {
+    return this.vagaService.findAll(query);
+  }
+
+  @Get('find/regioes')
+  async regioes() {
+    return this.vagaService.regioesComVagaAberta();
   }
 
   @Get('find/empresa')

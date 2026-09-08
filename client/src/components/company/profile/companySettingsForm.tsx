@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, Phone, Calendar, MapPin, ArrowLeft, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -36,6 +36,25 @@ const CompanySettingsForm = () => {
   const [state, setState] = useState(user.Address?.state || "");
   const [cepLoading, setCepLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
+
+  // `user` vem de um fetch assíncrono no contexto (userContextCompany.tsx)
+  // — na primeira renderização ele ainda tá vazio, então o useState acima
+  // (que só lê o valor inicial uma vez) fica travado em "". Esse efeito
+  // resincroniza os campos assim que o dado real da empresa chega.
+  useEffect(() => {
+    setName(user.name || "");
+    setFantasyName(user.fantasyName || "");
+    setSocialReason(user.socialReason || "");
+    setPhone(user.phone ? phoneMask(user.phone) : "");
+    setOpeningDate(user.openingDate ? user.openingDate.slice(0, 10) : "");
+    setCep(user.Address?.postalCode ? cepMask(user.Address.postalCode) : "");
+    setStreet(user.Address?.street || "");
+    setNumber(user.Address?.number || "");
+    setComplement(user.Address?.complement || "");
+    setDistrict(user.Address?.district || "");
+    setCity(user.Address?.city || "");
+    setState(user.Address?.state || "");
+  }, [user]);
 
   const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = cepMask(e.target.value);
@@ -123,7 +142,7 @@ const CompanySettingsForm = () => {
   return (
     <>
     <div className="min-h-screen bg-gray-50 pt-20">
-      <div className="max-w-2xl mx-auto px-4 sm:px-8 py-12">
+      <div className="max-w-3xl mx-auto px-4 sm:px-8 py-12">
         <button
           onClick={() => navigate("/empresa")}
           className="flex items-center gap-2 text-gray-600 hover:text-deepGreen transition-colors duration-200 mb-6 font-SecondFont text-sm"

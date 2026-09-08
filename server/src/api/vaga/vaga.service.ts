@@ -1,11 +1,25 @@
 import { ConflictException, Injectable } from '@nestjs/common';
+import { Prisma } from 'generated/prisma';
 import { CreateVagaDto, ProcessoSeletivoDto } from './dto/create-vaga.dto';
 import { UpdateVagaDto } from './dto/update-vaga.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CandidaturaNotificationService } from '../candidatura/candidatura-notification.service';
+import { normalizeText } from '../../common/normalizeText';
 
 const CANDIDATO_SELECT = { id: true, name: true, email: true, phone: true };
 const EMPRESA_SELECT = { id: true, fantasyName: true, name: true };
+const ITENS_POR_PAGINA_PADRAO = 10;
+const ITENS_POR_PAGINA_MAXIMO = 50;
+
+export interface FindAllVagaQuery {
+  busca?: string;
+  regiao?: string;
+  area?: string;
+  modalidade?: string;
+  ordenacao?: string;
+  pagina?: string;
+  itensPorPagina?: string;
+}
 
 @Injectable()
 export class VagaService {
@@ -23,6 +37,8 @@ export class VagaService {
     return this.prisma.vaga.create({
       data: {
         ...vagaData,
+        nomeBusca: normalizeText(vagaData.nome),
+        cargoBusca: normalizeText(vagaData.cargo),
         empresaId,
         beneficios: { createMany: { data: beneficios } },
         requisitos: { createMany: { data: requisitos } },
@@ -33,23 +49,76 @@ export class VagaService {
     });
   }
 
-  async findAll() {
-    return this.prisma.vaga.findMany({
-      include: {
-        beneficios: true,
-        requisitos: true,
-        empresa: {
-          select: {
-            id: true,
-            fantasyName: true,
-            name: true,
-            logoUrl: true,
-            Address: { select: { city: true } },
+  async findAll(query: FindAllVagaQuery) {
+    const pagina = Math.max(1, Number(query.pagina) || 1);
+    const itensPorPagina = Math.min(
+      ITENS_POR_PAGINA_MAXIMO,
+      Math.max(1, Number(query.itensPorPagina) || ITENS_POR_PAGINA_PADRAO),
+    );
+    const buscaNormalizada = query.busca ? normalizeText(query.busca.trim()) : '';
+
+    const where: Prisma.VagaWhereInput = {
+      status: 'aberta',
+      ...(query.area && { area: query.area }),
+      ...(query.modalidade && { modalidade: query.modalidade }),
+      ...(query.regiao && { empresa: { Address: { city: query.regiao } } }),
+      ...(buscaNormalizada && {
+        OR: [
+          { nomeBusca: { contains: buscaNormalizada } },
+          { cargoBusca: { contains: buscaNormalizada } },
+          { empresa: { fantasyNameBusca: { contains: buscaNormalizada } } },
+          { empresa: { nameBusca: { contains: buscaNormalizada } } },
+        ],
+      }),
+    };
+
+    const orderBy: Prisma.VagaOrderByWithRelationInput =
+      query.ordenacao === 'salario-maior'
+        ? { salario: { sort: 'desc', nulls: 'last' } }
+        : query.ordenacao === 'salario-menor'
+          ? { salario: { sort: 'asc', nulls: 'last' } }
+          : { createdAt: 'desc' };
+
+    const [vagas, total] = await Promise.all([
+      this.prisma.vaga.findMany({
+        where,
+        orderBy,
+        skip: (pagina - 1) * itensPorPagina,
+        take: itensPorPagina,
+        include: {
+          beneficios: true,
+          requisitos: true,
+          empresa: {
+            select: {
+              id: true,
+              fantasyName: true,
+              name: true,
+              logoUrl: true,
+              Address: { select: { city: true } },
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.vaga.count({ where }),
+    ]);
+
+    return {
+      vagas,
+      total,
+      totalPaginas: Math.max(1, Math.ceil(total / itensPorPagina)),
+      paginaAtual: pagina,
+    };
+  }
+
+  async regioesComVagaAberta() {
+    const vagas = await this.prisma.vaga.findMany({
+      where: { status: 'aberta' },
+      select: { empresa: { select: { Address: { select: { city: true } } } } },
     });
+    const cidades = new Set(
+      vagas.map((v) => v.empresa?.Address?.city).filter((c): c is string => !!c),
+    );
+    return [...cidades].sort((a, b) => a.localeCompare(b));
   }
 
   async findByEmpresa(empresaId: number) {
@@ -129,6 +198,8 @@ export class VagaService {
         where: { id },
         data: {
           ...vagaData,
+          ...(vagaData.nome && { nomeBusca: normalizeText(vagaData.nome) }),
+          ...(vagaData.cargo && { cargoBusca: normalizeText(vagaData.cargo) }),
           ...(beneficios && { beneficios: { createMany: { data: beneficios } } }),
           ...(requisitos && { requisitos: { createMany: { data: requisitos } } }),
           ...(etapas && { etapas: { createMany: { data: etapas.map((etapa, ordem) => ({ ...etapa, ordem })) } } }),
@@ -151,6 +222,11 @@ export class VagaService {
       data: {
         nome: `${vaga.nome} (cópia)`,
         cargo: vaga.cargo,
+        // nomeBusca precisa ser recalculado — o nome muda (ganha "(cópia)").
+        // cargoBusca pode ser recalculado direto do cargo original, que
+        // não muda na duplicação.
+        nomeBusca: normalizeText(`${vaga.nome} (cópia)`),
+        cargoBusca: normalizeText(vaga.cargo),
         descricao: vaga.descricao,
         salario: vaga.salario,
         area: vaga.area,
