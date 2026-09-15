@@ -55,6 +55,16 @@ export class CandidaturaController {
     return this.candidaturaService.porVaga(Number(vagaId), req.user.sub);
   }
 
+  @Get('vaga/:vagaId/contagem')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('company')
+  async contagemPorEtapa(@Param('vagaId') vagaId: string, @Req() req) {
+    return this.candidaturaService.contagemPorEtapa(
+      Number(vagaId),
+      req.user.sub,
+    );
+  }
+
   @Get('etapa/:etapaId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('company')

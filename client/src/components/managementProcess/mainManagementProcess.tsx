@@ -14,6 +14,7 @@ import {
   ProcessoSeletivoPayload,
   Vaga,
 } from "@/services/vaga";
+import { getContagemPorEtapa, type ContagemEtapa } from "@/services/candidatura";
 
 const MainManagementProcess = () => {
   const [searchParams] = useSearchParams();
@@ -33,6 +34,7 @@ const MainManagementProcess = () => {
 
   const [editandoProcesso, setEditandoProcesso] = useState(false);
   const [movendoId, setMovendoId] = useState<number | null>(null);
+  const [contagens, setContagens] = useState<ContagemEtapa[]>([]);
 
   const fetchVaga = () => {
     if (!vagaId) {
@@ -49,6 +51,16 @@ const MainManagementProcess = () => {
 
   useEffect(() => {
     fetchVaga();
+  }, [vagaId]);
+
+  // Contagem de candidatos por etapa: chamada separada da vaga porque só a
+  // empresa dona pode ver esse número (o GET da vaga é público). Se falhar,
+  // a tela segue normal — é informação complementar, não bloqueia nada.
+  useEffect(() => {
+    if (!vagaId) return;
+    getContagemPorEtapa(Number(vagaId))
+      .then(setContagens)
+      .catch(() => setContagens([]));
   }, [vagaId]);
 
   const etapas: EtapaProcessoSeletivo[] = vaga?.etapas ?? [];
@@ -279,10 +291,11 @@ const MainManagementProcess = () => {
               </div>
             ) : (
               <>
-                <EtapasTimeline etapas={etapas} />
+                <EtapasTimeline etapas={etapas} contagens={contagens} />
                 <EtapasDisplay
                   etapas={etapas}
                   vagaId={Number(vagaId)}
+                  contagens={contagens}
                   movendoId={movendoId}
                   onMover={handleMover}
                   onExcluir={(id) =>

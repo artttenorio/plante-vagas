@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { Loader2, Users, Lock, AlertTriangle, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { EtapaProcessoSeletivo, deleteEtapa, deleteVaga, updateEtapaService, fecharEtapa as fecharEtapaService } from "@/services/vaga";
+import type { ContagemEtapa } from "@/services/candidatura";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   AlertDialog,
@@ -20,13 +21,14 @@ type EtapaProps = {
   index: number;
   totalEtapas: number;
   podeExcluir: boolean;
+  contagem?: ContagemEtapa;
   movendo: boolean;
   onExcluir: (id: number) => void;
   onAtualizar: (etapa: EtapaProcessoSeletivo) => void;
   onMover: (etapaId: number, direcao: "cima" | "baixo") => void;
 };
 
-const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, movendo, onExcluir, onAtualizar, onMover }: EtapaProps) => {
+const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, movendo, onExcluir, onAtualizar, onMover }: EtapaProps) => {
   const navigate = useNavigate();
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(etapa.nome);
@@ -206,6 +208,22 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, movendo, onExcl
               <ChevronDown size={16} aria-hidden="true" />
             </button>
           </div>
+          {contagem && (
+            <span
+              className="flex items-center gap-1.5 bg-gray-100 text-gray-700 text-sm px-3 py-1 rounded-full"
+              title={
+                contagem.rejeitados > 0
+                  ? `${contagem.ativos} em andamento e ${contagem.rejeitados} não selecionado(s)`
+                  : undefined
+              }
+            >
+              <Users size={14} aria-hidden="true" />
+              {contagem.total} {contagem.total === 1 ? "candidato" : "candidatos"}
+              {contagem.rejeitados > 0 && (
+                <span className="text-gray-400">({contagem.ativos} ativos)</span>
+              )}
+            </span>
+          )}
           <span className="bg-paleGreen/50 text-deepGreen text-sm px-3 py-1 rounded-full capitalize">{etapa.status}</span>
         </div>
       </div>
@@ -224,7 +242,7 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, movendo, onExcl
           className="flex items-center justify-center gap-2 bg-deepGreen text-sm text-white px-5 py-2.5 rounded-xl hover:bg-mediumGreen transition-colors duration-200 font-SecondFont font-semibold"
         >
           <Users size={16} aria-hidden="true" />
-          Ver candidatos
+          Ver candidatos{contagem ? ` (${contagem.total})` : ""}
         </button>
 
         <button

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ClipboardList, Loader2, Building2, X, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { getMinhasCandidaturas, cancelarCandidatura, type Candidatura } from "@/services/candidatura";
+import EtapasProgresso from "./etapasProgresso";
 import { timeAgo } from "@/utils/timeAgo";
 import {
   AlertDialog,
@@ -181,6 +182,16 @@ export default function SelectionProcess() {
                       há {timeAgo(candidatura.createdAt)}
                     </span>
                   </div>
+
+                  {vaga?.etapas && candidatura.etapa && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <EtapasProgresso
+                        etapas={vaga.etapas}
+                        etapaAtualId={candidatura.etapa.id}
+                        rejeitado={candidatura.rejeitado}
+                      />
+                    </div>
+                  )}
 
                   {candidatura.rejeitado && candidatura.motivoRejeicao && (
                     <p className="text-red-700 bg-red-50 border border-red-100 rounded-lg p-3 text-sm mt-4">

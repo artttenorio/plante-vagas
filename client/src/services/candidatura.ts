@@ -1,5 +1,5 @@
 import { authFetch, BASE_URL } from "./api";
-import type { EtapaProcessoSeletivo } from "./vaga";
+import type { EtapaProcessoSeletivo, ProcessoSeletivo } from "./vaga";
 
 const CANDIDATURA_URL = `${BASE_URL}/candidatura`;
 
@@ -21,6 +21,10 @@ export interface Candidatura {
       nome: string;
       cargo: string;
       empresa?: { id: number; fantasyName: string; name: string; logoUrl?: string | null };
+      // RF017 — processo seletivo completo, pro candidato ver todas as
+      // etapas e em qual delas ele está, não só a atual.
+      etapas?: EtapaProcessoSeletivo[];
+      processoSeletivo?: ProcessoSeletivo | null;
     };
   };
   candidato?: { id: number; name: string; email: string; phone: string; photoUrl?: string | null };
@@ -57,6 +61,19 @@ export async function getMinhasCandidaturas(): Promise<Candidatura[]> {
 export async function getCandidatosPorVaga(vagaId: number): Promise<Candidatura[]> {
   const response = await authFetch(`${CANDIDATURA_URL}/vaga/${vagaId}`);
   return handle<Candidatura[]>(response);
+}
+
+export interface ContagemEtapa {
+  etapaId: number;
+  total: number;
+  rejeitados: number;
+  ativos: number;
+}
+
+/** Quantos candidatos há em cada etapa, pra empresa ver sem abrir a lista. */
+export async function getContagemPorEtapa(vagaId: number): Promise<ContagemEtapa[]> {
+  const response = await authFetch(`${CANDIDATURA_URL}/vaga/${vagaId}/contagem`);
+  return handle<ContagemEtapa[]>(response);
 }
 
 export async function getCandidatosPorEtapa(etapaId: number): Promise<Candidatura[]> {

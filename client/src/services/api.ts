@@ -63,7 +63,39 @@ export function getUserId(): string | null {
   return storage().getItem("userId");
 }
 
+/**
+ * Ações que só o candidato consome (candidatar-se, salvar vaga, favoritar
+ * empresa). Visitante deslogado continua vendo — o botão leva pro login.
+ * Quem está logado como empresa não vê, porque a API recusaria mesmo.
+ */
+export function podeUsarAcoesDeCandidato() {
+  return getUserType() !== "company";
+}
+
+/** Espelho do acima: ações que só a empresa consome. */
+export function podeUsarAcoesDeEmpresa() {
+  return getUserType() !== "candidate";
+}
+
+/**
+ * Caches em memória dos services (vaga.ts, company.ts) que guardam dado de
+ * UM usuário. Como o logout é `navigate("/login")` (SPA, sem reload), esses
+ * Maps sobreviviam à troca de conta e a sessão nova lia dado da anterior —
+ * daí vinha o "Sem permissão" do backend, que confere o dono do recurso.
+ * Cada service se registra aqui e é zerado no login e no logout.
+ */
+const sessionCaches: Array<() => void> = [];
+
+export function registerSessionCache(reset: () => void) {
+  sessionCaches.push(reset);
+}
+
+function clearSessionCaches() {
+  sessionCaches.forEach((reset) => reset());
+}
+
 export function setSession(session: Session) {
+  clearSessionCaches();
   storage().setItem("token", session.accessToken);
   if (session.userType !== undefined) {
     storage().setItem("userType", session.userType);
@@ -74,6 +106,7 @@ export function setSession(session: Session) {
 }
 
 export function clearSession() {
+  clearSessionCaches();
   storage().removeItem("token");
   storage().removeItem("userType");
   storage().removeItem("userId");

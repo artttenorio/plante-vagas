@@ -7,10 +7,13 @@ import CompanyInfoPage from "../company-job-infomation/enterprise";
 import type { Vaga } from "@/services/vaga";
 import { candidatarSe } from "@/services/candidatura";
 import { favoritarVaga, desfavoritarVaga, getMinhasVagasFavoritas } from "@/services/favoritosVaga";
-import { getToken, getUserType } from "@/services/api";
+import { getToken, getUserType, podeUsarAcoesDeCandidato } from "@/services/api";
 
 const MainJobPage = ({ vaga }: { vaga: Vaga }) => {
   const navigate = useNavigate();
+  // Empresa logada não vê "Salvar" nem "Candidatar-se": são ações de
+  // candidato, a API recusaria de qualquer jeito.
+  const mostrarAcoesDeCandidato = podeUsarAcoesDeCandidato();
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const savedAlteradoPeloUsuario = useRef(false);
@@ -137,19 +140,21 @@ const MainJobPage = ({ vaga }: { vaga: Vaga }) => {
               {copied ? "Copiado!" : "Copiar link"}
             </button>
 
-            <button
-              onClick={toggleBookmark}
-              disabled={saving}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-SecondFont text-sm font-medium
-                       transition-all duration-300 disabled:opacity-60 ${
-                         saved
-                           ? "bg-deepGreen text-white"
-                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                       }`}
-            >
-              {saved ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}
-              {saved ? "Salvo" : "Salvar"}
-            </button>
+            {mostrarAcoesDeCandidato && (
+              <button
+                onClick={toggleBookmark}
+                disabled={saving}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-SecondFont text-sm font-medium
+                         transition-all duration-300 disabled:opacity-60 ${
+                           saved
+                             ? "bg-deepGreen text-white"
+                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                         }`}
+              >
+                {saved ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}
+                {saved ? "Salvo" : "Salvar"}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -181,9 +186,9 @@ const MainJobPage = ({ vaga }: { vaga: Vaga }) => {
       {/* Content */}
       <div className="p-6 sm:p-8">
         {activeTab === "vaga" ? (
-          <JobInformation vaga={vaga} onCandidatar={handleCandidatar} candidatando={candidatando} candidatado={candidatado} />
+          <JobInformation vaga={vaga} onCandidatar={handleCandidatar} candidatando={candidatando} candidatado={candidatado} mostrarCandidatar={mostrarAcoesDeCandidato} />
         ) : (
-          <CompanyInfoPage empresa={vaga.empresa} onCandidatar={handleCandidatar} candidatando={candidatando} candidatado={candidatado} />
+          <CompanyInfoPage empresa={vaga.empresa} onCandidatar={handleCandidatar} candidatando={candidatando} candidatado={candidatado} mostrarCandidatar={mostrarAcoesDeCandidato} />
         )}
       </div>
     </section>

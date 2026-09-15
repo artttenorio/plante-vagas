@@ -1,4 +1,4 @@
-import { authFetch, BASE_URL, getUserId } from "./api";
+import { authFetch, BASE_URL, getUserId, registerSessionCache } from "./api";
 
 const COMPANY_URL = `${BASE_URL}/company`;
 
@@ -60,6 +60,10 @@ export interface PublicCompany {
 }
 
 const publicCompanyCache = new Map<number, PublicCompany>();
+
+// O perfil público inclui as vagas abertas da empresa; zerado na troca de
+// sessão pra a conta nova não herdar o que a anterior tinha carregado.
+registerSessionCache(() => publicCompanyCache.clear());
 
 export async function getPublicCompany(id: number): Promise<PublicCompany> {
   const cached = publicCompanyCache.get(id);

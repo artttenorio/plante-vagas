@@ -32,9 +32,37 @@ export class VagaService {
     return { ...dto, dataInicio: new Date(dto.dataInicio) };
   }
 
+  /** Meia-noite de hoje em UTC — a data vem do input como "YYYY-MM-DD". */
+  private inicioDeHoje() {
+    const agora = new Date();
+    return new Date(
+      Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate()),
+    );
+  }
+
+  private mesmoDia(a: Date, b: Date) {
+    return a.getTime() === b.getTime();
+  }
+
+  /**
+   * Processo seletivo não pode começar antes de hoje. Em edição, uma data
+   * passada JÁ SALVA continua aceita se não mudou — senão as vagas antigas
+   * (cujo dataInicio foi retroalimentado com a data de criação da vaga)
+   * ficariam impossíveis de editar sem mexer na data.
+   */
+  private assertDataInicioNaoPassada(dataInicio: Date, anterior?: Date | null) {
+    if (dataInicio >= this.inicioDeHoje()) return;
+    if (anterior && this.mesmoDia(dataInicio, anterior)) return;
+
+    throw new ConflictException(
+      'A data de início do processo seletivo não pode ser anterior a hoje',
+    );
+  }
+
   async create(createVagaDto: CreateVagaDto, empresaId: number) {
     const { beneficios, requisitos, etapas, processoSeletivo, ...vagaData } = createVagaDto;
-    return this.prisma.vaga.create({
+    this.assertDataInicioNaoPassada(new Date(processoSeletivo.dataInicio));
+    const vaga = await this.prisma.vaga.create({
       data: {
         ...vagaData,
         nomeBusca: normalizeText(vagaData.nome),
@@ -45,8 +73,45 @@ export class VagaService {
         etapas: { createMany: { data: etapas.map((etapa, ordem) => ({ ...etapa, ordem })) } },
         processoSeletivo: { create: this.normalizarProcesso(processoSeletivo) },
       },
-      include: { beneficios: true, requisitos: true, etapas: { orderBy: { ordem: 'asc' } }, processoSeletivo: true },
+      include: {
+        beneficios: true,
+        requisitos: true,
+        etapas: { orderBy: { ordem: 'asc' } },
+        processoSeletivo: true,
+        empresa: { select: EMPRESA_SELECT },
+      },
     });
+
+    void this.notificarCandidatosQueFavoritaram(vaga);
+
+    return vaga;
+  }
+
+  /**
+   * RF013/RF042 — avisa por WhatsApp (mesmo webhook n8n das outras
+   * notificações) todo candidato que favoritou a empresa. Fire-and-forget:
+   * falha de notificação não pode derrubar a criação da vaga, que já foi
+   * gravada nesse ponto.
+   */
+  private async notificarCandidatosQueFavoritaram(vaga: {
+    id: number;
+    nome: string;
+    cargo: string;
+    empresaId: number;
+    empresa: { id: number; fantasyName: string; name: string };
+  }) {
+    const favoritos = await this.prisma.empresaFavorita.findMany({
+      where: { empresaId: vaga.empresaId },
+      include: { candidato: { select: CANDIDATO_SELECT } },
+    });
+
+    for (const favorito of favoritos) {
+      void this.notification.novaVagaEmpresaFavorita({
+        candidato: favorito.candidato,
+        empresa: vaga.empresa,
+        vaga: { id: vaga.id, nome: vaga.nome, cargo: vaga.cargo },
+      });
+    }
   }
 
   async findAll(query: FindAllVagaQuery) {
@@ -176,6 +241,17 @@ export class VagaService {
 
     const { beneficios, requisitos, etapas, processoSeletivo, ...vagaData } = updateVagaDto;
 
+    if (processoSeletivo) {
+      const atual = await this.prisma.processoSeletivo.findUnique({
+        where: { vagaId: id },
+        select: { dataInicio: true },
+      });
+      this.assertDataInicioNaoPassada(
+        new Date(processoSeletivo.dataInicio),
+        atual?.dataInicio,
+      );
+    }
+
     return this.prisma.$transaction(async (tx) => {
       if (beneficios) {
         await tx.beneficio.deleteMany({ where: { vagaId: id } });
@@ -268,7 +344,14 @@ export class VagaService {
     if (!vaga) throw new ConflictException('Vaga não encontrada');
     if (vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão');
 
+    const atual = await this.prisma.processoSeletivo.findUnique({
+      where: { vagaId },
+      select: { dataInicio: true },
+    });
+
     const normalizado = this.normalizarProcesso(dto);
+    this.assertDataInicioNaoPassada(normalizado.dataInicio, atual?.dataInicio);
+
     return this.prisma.processoSeletivo.upsert({
       where: { vagaId },
       create: { ...normalizado, vagaId },
