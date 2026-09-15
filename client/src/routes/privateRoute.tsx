@@ -1,13 +1,14 @@
 import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
+import { getToken, getUserType } from "@/services/api";
 
 interface PrivateRouteProps {
   allowedRoles: string[];
 }
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ allowedRoles }) => {
-  const token = localStorage.getItem("token");
-  const userType = localStorage.getItem("userType");
+  const token = getToken();
+  const userType = getUserType();
 
   if (!token) {
     return <Navigate to="/login" replace />;
