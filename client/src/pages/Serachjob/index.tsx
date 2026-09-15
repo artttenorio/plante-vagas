@@ -62,7 +62,7 @@ const SearchJobs = () => {
 
       <main className="pt-20 min-h-screen bg-gray-50">
         {/* Hero Section */}
-        <div className="bg-gradient-to-br from-amber-600 to-[#FCCE41] py-12 sm:py-16">
+        <div className="bg-gradient-to-br from-deepGreen to-mediumGreen py-12 sm:py-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
             <div className="inline-flex items-center gap-2 bg-white/20 text-white px-4 py-2 rounded-full text-sm font-SecondFont font-medium mb-4">
               <Briefcase size={16} />
