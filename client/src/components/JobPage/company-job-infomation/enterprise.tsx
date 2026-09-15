@@ -8,9 +8,11 @@ type CompanyInfoPageProps = {
   onCandidatar: () => void;
   candidatando: boolean;
   candidatado: boolean;
+  /** false quando é uma empresa logada olhando a vaga. */
+  mostrarCandidatar: boolean;
 };
 
-const CompanyInfoPage = ({ empresa, onCandidatar, candidatando, candidatado }: CompanyInfoPageProps) => {
+const CompanyInfoPage = ({ empresa, onCandidatar, candidatando, candidatado, mostrarCandidatar }: CompanyInfoPageProps) => {
   const nomeEmpresa = empresa?.fantasyName || empresa?.name || "Empresa";
   const [perfil, setPerfil] = useState<PublicCompany | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -85,6 +87,8 @@ const CompanyInfoPage = ({ empresa, onCandidatar, candidatando, candidatado }: C
       </section>
 
       {/* Join CTA */}
+      {/* Mesmo motivo do job-information: empresa logada não vê o convite. */}
+      {mostrarCandidatar && (
       <section className="pt-4">
         <div className="bg-gradient-to-r from-mediumGreen to-deepGreen rounded-2xl p-6 sm:p-8">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
@@ -112,6 +116,7 @@ const CompanyInfoPage = ({ empresa, onCandidatar, candidatando, candidatado }: C
           </div>
         </div>
       </section>
+      )}
     </div>
   );
 };

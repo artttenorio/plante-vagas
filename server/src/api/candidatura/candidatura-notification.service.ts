@@ -76,6 +76,22 @@ export class CandidaturaNotificationService {
     });
   }
 
+  /**
+   * RF013/RF042 — candidato que favoritou a empresa é avisado quando ela
+   * publica uma vaga nova. Um envio por candidato favoritado.
+   */
+  async novaVagaEmpresaFavorita(params: {
+    candidato: CandidatoPayload;
+    empresa: EmpresaPayload;
+    vaga: VagaPayload;
+  }) {
+    await this.enviar('nova_vaga_empresa_favorita', {
+      candidato: this.mapCandidato(params.candidato),
+      empresa: this.mapEmpresa(params.empresa),
+      vaga: params.vaga,
+    });
+  }
+
   private mapCandidato(candidato: CandidatoPayload) {
     return {
       id: candidato.id,

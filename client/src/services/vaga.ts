@@ -1,4 +1,4 @@
-import { authFetch, BASE_URL } from "./api";
+import { authFetch, BASE_URL, registerSessionCache } from "./api";
 
 const VAGA_URL = `${BASE_URL}/vaga`;
 
@@ -70,6 +70,14 @@ let vagasByEmpresaCache: Vaga[] | null = null;
 function invalidateVagaListCaches() {
   vagasByEmpresaCache = null;
 }
+
+// Zerado no login e no logout: `vagasByEmpresaCache` guarda as vagas de UMA
+// empresa, e `vagaCache` guarda vagas que a conta anterior podia ver.
+registerSessionCache(() => {
+  vagaCache.clear();
+  vagasByEmpresaCache = null;
+  regioesCache = null;
+});
 
 export async function createVaga(data: VagaPayload): Promise<Vaga> {
   const response = await authFetch(`${VAGA_URL}/create`, {

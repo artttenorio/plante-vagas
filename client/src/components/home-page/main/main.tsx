@@ -4,10 +4,14 @@ import { Search, ArrowRight, ExternalLink, Leaf } from "lucide-react";
 import bgImage from "../../../assets/images/bg-teste.jpg";
 import bgImage2 from "../../../assets/images/plantacao2.jpeg";
 import bgImage3 from "../../../assets/images/teste2.jpg";
+import { getUserType } from "@/services/api";
 
 export default function Main() {
   const navigate = useNavigate();
   const [busca, setBusca] = useState("");
+  // Chamada "Para empresas / CADASTRAR EMPRESA" só faz sentido pra visitante
+  // deslogado: o candidato não usa, e a empresa logada já tem conta.
+  const mostrarCtaEmpresa = getUserType() === null;
 
   const buscarVagas = (termo: string) => {
     const termoTratado = termo.trim();
@@ -174,6 +178,7 @@ export default function Main() {
       </section>
 
       {/* CTA Section - Companies */}
+      {mostrarCtaEmpresa && (
       <section id="servico" className="relative py-24 overflow-hidden">
         <div
           className="absolute inset-0"
@@ -212,6 +217,7 @@ export default function Main() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Internship Section */}
       <section className="relative py-24 overflow-hidden">

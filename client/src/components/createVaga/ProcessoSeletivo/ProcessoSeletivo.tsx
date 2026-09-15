@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { useVagaCreate } from "../VagaCreateContext";
+import { dataInicioMinima, validarDataInicio } from "@/utils/dataInicio";
 
 const Processselective = ({ onProximo }: { onProximo: () => void }) => {
   const { data, setData } = useVagaCreate();
   const [nomeProcesso, setNomeProcesso] = useState(data.processoSeletivo.nome);
   const [dataInicio, setDataInicio] = useState(data.processoSeletivo.dataInicio);
+  // Valor que já estava salvo quando a tela abriu. Em edição de vaga antiga a
+  // data pode ser passada e precisa continuar aceita; em criação é "".
+  const [dataSalva] = useState(data.processoSeletivo.dataInicio);
   const [duracaoDias, setDuracaoDias] = useState(data.processoSeletivo.duracaoDias);
   const [descricao, setDescricao] = useState(data.processoSeletivo.descricao);
   const [erro, setErro] = useState("");
@@ -19,8 +23,9 @@ const Processselective = ({ onProximo }: { onProximo: () => void }) => {
       setErro("O nome do processo é obrigatório.");
       return;
     }
-    if (!dataInicio) {
-      setErro("A data de início é obrigatória.");
+    const erroData = validarDataInicio(dataInicio, dataSalva);
+    if (erroData) {
+      setErro(erroData);
       return;
     }
     setData({
@@ -62,6 +67,7 @@ const Processselective = ({ onProximo }: { onProximo: () => void }) => {
               <input
                 type="date"
                 value={dataInicio}
+                min={dataInicioMinima(dataSalva)}
                 onChange={(e) => setDataInicio(e.target.value)}
                 className={inputClass}
               />

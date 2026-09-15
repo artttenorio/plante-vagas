@@ -1158,3 +1158,194 @@ saber o que falta. Se quiser que eu comece algum desses, é só pedir.
 
   Limitação restante: nenhuma, a validação visual que antes ficava
   pendente foi feita nesta rodada.
+
+
+27. BUG "SEM PERMISSÃO" APÓS TROCAR DE CONTA (card da lista BUGS)
+---------------------------------------------------------------------------
+[RESOLVIDO — 15/09] Card "ERRO DE PERMISSÃO AO UTILIZAR API PARA GERENCIAR
+  PROCESSO SELETIVO". Causa raiz achada e reproduzida: os caches em memória
+  que o item 16 adicionou (`vagaCache`, `vagasByEmpresaCache`, `regioesCache`
+  em services/vaga.ts e `publicCompanyCache` em services/company.ts) são
+  variáveis de MÓDULO, e os 5 handlers de logout do projeto fazem
+  `clearSession(); navigate("/login")` — navegação de SPA, sem reload. Ou
+  seja: o localStorage era limpo, mas os Maps continuavam vivos. A conta
+  seguinte carregava a tela com o dado da conta anterior e, ao agir sobre
+  ele, o backend recusava com "Sem permissão" — que é a checagem de dono
+  (`vaga.empresaId !== empresaId`) em vaga.service.ts, não um problema de
+  token nem de sessão no servidor. O backend estava certo o tempo todo.
+
+  Corrigido em services/api.ts: um registro simples de callbacks
+  (`registerSessionCache`) que vaga.ts e company.ts assinam, chamado tanto
+  em `clearSession()` (logout e 401) quanto em `setSession()` (login) — os
+  dois lados, pra não depender de qual dos 5 botões de "Sair da conta" foi
+  usado. Sem lib nova; o registro fica em api.ts pra não criar import
+  circular (vaga.ts já importa api.ts).
+
+  Reproduzido e verificado no navegador (Playwright rodado a partir de um
+  venv que já existia fora do projeto — nada instalado aqui), Chromium
+  headless contra front 5173 + back 3000 + banco real, navegando SÓ por
+  clique (page.goto recarrega a página e mascara o bug, foi o que atrapalhou
+  a primeira tentativa):
+    - ANTES do fix: login Vale do Cerrado → VAGAS → logout → login Grão
+      Norte → VAGAS mostrava as 5 vagas do Vale do Cerrado. Clicar em
+      "Finalizar vaga" ali deu 409 "Sem permissão" em
+      PATCH /vaga/5/finalizar e /vaga/1/finalizar — exatamente o sintoma
+      do card. (Nenhuma vaga foi alterada: 409 recusa antes de gravar.)
+    - DEPOIS do fix: mesma sequência, Grão Norte vê os próprios cargos
+      (Analista Comercial, Trader, Operador de Balança...) e "Gerenciar
+      processo" abre limpo. Zero erro no console.
+
+  Observação pro time: o cenário do card (candidato → empresa) e o que eu
+  usei (empresa A → empresa B) são o mesmo defeito; empresa→empresa é só o
+  jeito mais direto de disparar, porque `vagasByEmpresaCache` só é
+  preenchido por conta de empresa.
+
+
+28. RF013/RF042 — NOTIFICAÇÃO DE NOVA VAGA DE EMPRESA FAVORITADA
+---------------------------------------------------------------------------
+[RESOLVIDO — 15/09] Os dois cards pedem a mesma coisa (avisar o candidato
+  quando uma empresa que ele segue publica vaga nova) e foram feitos juntos.
+  Era o que faltava das notificações: RF040 (avanço de etapa) e RF041
+  (rejeição) já existiam de verdade em candidatura-notification.service.ts
+  e são chamados em candidatura.service.ts.mover() — conferido, não é stub.
+
+  - Novo evento `nova_vaga_empresa_favorita` no mesmo
+    CandidaturaNotificationService, pelo mesmo webhook n8n
+    (N8N_CANDIDATURA_WEBHOOK_URL) dos outros 4 eventos. Sem provedor novo.
+  - `vaga.service.ts.create()` agora, depois de gravar a vaga, busca os
+    EmpresaFavorita daquela empresa (model do item 26) e dispara uma
+    notificação por candidato. Fire-and-forget (`void`), igual ao padrão do
+    processoEncerrado — falha de webhook não pode derrubar a criação da
+    vaga, que nesse ponto já está no banco.
+  - `create()` passou a incluir `empresa` no retorno, que é de onde sai o
+    nome pra mensagem. O tipo Vaga do front já tinha `empresa` opcional.
+
+  Testado com contas reais do seed (joao@gmail.com / valedocerrado@gmail.com),
+  vaga de teste criada e apagada no final:
+    - candidato favorita a empresa (201) → empresa cria vaga → log confirma
+      1 disparo de "nova_vaga_empresa_favorita" (o webhook não está
+      configurado no .env local, então o service loga o warning nomeando o
+      evento — é a prova de que a chamada aconteceu).
+    - caso negativo: empresa sem nenhum favorito cria vaga → nenhum disparo
+      novo (contador seguiu em 1).
+
+  Decisão de escopo: `duplicar()` NÃO notifica. Vaga duplicada nasce sem
+  processoSeletivo e cai na tela de "complete o processo" (item 23), ou
+  seja, ainda é rascunho — avisar candidato ali seria falso positivo. Se o
+  time quiser o contrário, é uma linha em duplicar().
+
+
+29. RF017 — CANDIDATO SÓ VIA A ETAPA ATUAL, NÃO O PROCESSO INTEIRO
+---------------------------------------------------------------------------
+[RESOLVIDO — 15/09] O card pede que o candidato "visualize as etapas e seu
+  status no processo seletivo". Metade existia: a tela "Processos Seletivos"
+  já mostrava o status (Em análise / Avançou / Não selecionado) e a etapa
+  atual — mas só a atual, isolada, sem o candidato ter ideia de quantas
+  etapas o processo tem nem onde ele está. RF016 (atualizar status do
+  candidato) esse sim já estava completo via mover()/rejeitar.
+
+  - `candidatura.service.ts.minhas()` passou a incluir `vaga.etapas`
+    (ordenadas por `ordem`) e `vaga.processoSeletivo`. Só ampliou o include
+    de um endpoint que o candidato já chamava — nenhuma rota nova.
+  - Componente novo `userCandidate/selectionProcess/etapasProgresso.tsx`:
+    timeline somente-leitura na mesma linguagem visual da que a empresa já
+    vê em managementProcess/etapasTimeline.tsx. Etapa concluída = círculo
+    verde com check, etapa atual = verde escuro com anel, etapa futura =
+    cinza numerada. Se o candidato foi rejeitado, a etapa onde ele parou
+    aparece em vermelho com X. Tem texto em sr-only marcando qual é a etapa
+    atual, porque a informação estava só na cor.
+  - Ligado em selectionProcess.tsx dentro do card, com stopPropagation — o
+    card inteiro é clicável (vai pra vaga) e a timeline não deve disparar
+    isso.
+
+  Testado no navegador (mesmo setup do item 27): processo de teste com 3
+  etapas, candidato movido pra 2ª pela API da empresa, tela do candidato
+  renderizou "Triagem ✓ — Entrevista (atual) — 3 Proposta" certinho, sem
+  erro de console. Vaga de teste apagada no final; banco de volta em 103
+  vagas, o mesmo número de antes.
+
+
+30. EMPRESA NÃO VIA QUANTOS CANDIDATOS TEM EM CADA ETAPA
+---------------------------------------------------------------------------
+[RESOLVIDO — 15/09] Na tela "Gerenciar processo seletivo" a única forma de
+  saber quantos candidatos havia numa etapa era clicar em "Ver candidatos" e
+  contar — uma etapa por vez, sem visão do funil.
+
+  - Endpoint novo `GET /candidatura/vaga/:vagaId/contagem` (@Roles('company')
+    + checagem de dono), devolvendo por etapa `{ etapaId, total, rejeitados,
+    ativos }`. É endpoint separado de propósito: o `GET /vaga/find/:id` é
+    PÚBLICO, então pendurar contagem de candidatos nele vazaria esse número
+    pra qualquer visitante. Aqui não trafega nenhum dado pessoal, só números.
+  - Front: badge "N candidatos" no cabeçalho de cada card de etapa (com
+    "(N ativos)" ao lado quando existe alguém rejeitado, e o detalhe no
+    title), contagem embaixo do nome de cada etapa na timeline do topo, e o
+    número junto no botão — "Ver candidatos (3)".
+  - Se a chamada de contagem falhar, a tela segue normal sem os números: é
+    informação complementar, não pode quebrar o gerenciamento.
+
+  Testado via API (empresa dona 200 com os números certos; candidato 403;
+  outra empresa 409 "Sem permissão") e no navegador com 2 candidatos
+  inscritos — badge, timeline e botão bateram, e depois de rejeitar um a
+  contagem virou "1 candidato (0 ativos)" na hora.
+
+
+31. DATA DE INÍCIO DO PROCESSO SELETIVO NO PASSADO
+---------------------------------------------------------------------------
+[RESOLVIDO — 15/09] Dava pra criar/editar processo seletivo com data de
+  início anterior a hoje. Bloqueado nos dois lados:
+
+  - Backend (`vaga.service.ts`): `assertDataInicioNaoPassada()` chamado em
+    `create()`, `update()` e `upsertProcessoSeletivo()`. 409 com mensagem
+    explicando.
+  - Front: `utils/dataInicio.ts` (hojeISO / dataInicioMinima /
+    validarDataInicio) usado nos dois formulários que têm esse campo — o do
+    wizard de criar vaga (`createVaga/ProcessoSeletivo/ProcessoSeletivo.tsx`)
+    e o da tela de gerenciar (`managementProcess/processoSeletivoForm.tsx`).
+    Põe `min` no `<input type="date">` (o calendário já nem deixa escolher)
+    e valida antes de enviar.
+
+  Exceção deliberada: uma data passada JÁ SALVA continua válida se não
+  mudar. Sem isso as 103 vagas antigas — cujo `dataInicio` foi
+  retroalimentado com a data de criação da vaga no backfill do item 24 —
+  ficariam impossíveis de editar sem ser obrigado a mexer na data junto.
+  A regra vale tanto no `min` do calendário quanto na validação do servidor.
+
+  Nota de escopo: ETAPA não tem campo de data — só `prazoDias` (número de
+  dias, já com `min={1}`). Então não havia o que bloquear lá.
+
+  Testado via API: criar com ontem 409, com hoje 201, com amanhã 201;
+  editar pra ontem 409 nos dois endpoints (`PATCH /vaga/update/:id` e
+  `PATCH /vaga/:id/processo-seletivo`); editar vaga antiga mantendo a data
+  passada (25/08) 200. No navegador, `min` do campo = a data de hoje.
+
+
+32. BOTÕES DE CANDIDATO APARECENDO PRA EMPRESA (E VICE-VERSA)
+---------------------------------------------------------------------------
+[RESOLVIDO — 15/09] Empresa logada navegando pelo site público via botões
+  que ela não pode usar — a API recusava, mas o botão estava lá.
+
+  Novos helpers em `services/api.ts`: `getUserType()`,
+  `podeUsarAcoesDeCandidato()` e `podeUsarAcoesDeEmpresa()`.
+
+  Escondido pra EMPRESA logada:
+  - "Salvar" (favoritar vaga), no cabeçalho da página da vaga.
+  - "CANDIDATAR-SE" — some a seção de chamada inteira ("Interessado nesta
+    vaga?"), nas duas abas (`job-information.tsx` e `enterprise.tsx`); sem
+    o botão ela seria só um convite vazio.
+  - O coração de favoritar empresa já estava certo: `CompanyPublicProfile`
+    já checava `userType === "candidate"`, não precisou mexer.
+
+  Escondido pra usuário LOGADO (candidato ou empresa):
+  - Seção "Para empresas / CADASTRAR EMPRESA + CONHECER PLANOS" da home.
+    Era o único botão de empresa que aparecia pro candidato. Escondi pros
+    dois porque pra empresa logada também não faz sentido (já tem conta) —
+    se o time preferir mostrar só pro candidato, é trocar a condição em
+    `home-page/main/main.tsx`.
+
+  Deslogado continua vendo tudo: os botões levam pro login, que é o funil.
+
+  Testado no navegador nos 3 estados, na mesma vaga:
+    - empresa:   Salvar não, Candidatar-se não, Cadastrar empresa não
+    - candidato: Salvar sim,  Candidatar-se sim, Cadastrar empresa não
+    - deslogado: Salvar sim,  Candidatar-se sim, Cadastrar empresa sim
+  Zero erro de console. Banco de volta em 103 vagas no final.

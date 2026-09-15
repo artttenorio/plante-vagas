@@ -7,9 +7,11 @@ type JobInformationProps = {
   onCandidatar: () => void;
   candidatando: boolean;
   candidatado: boolean;
+  /** false quando é uma empresa logada olhando a vaga. */
+  mostrarCandidatar: boolean;
 };
 
-const JobInformation = ({ vaga, onCandidatar, candidatando, candidatado }: JobInformationProps) => {
+const JobInformation = ({ vaga, onCandidatar, candidatando, candidatado, mostrarCandidatar }: JobInformationProps) => {
   const jobDetails = [
     { icon: Clock, label: `Postada há ${timeAgo(vaga.createdAt)}`, color: "text-blue-600 bg-blue-50" },
     { icon: Briefcase, label: vaga.cargo, color: "text-purple-600 bg-purple-50" },
@@ -105,6 +107,9 @@ const JobInformation = ({ vaga, onCandidatar, candidatando, candidatado }: JobIn
       )}
 
       {/* Apply Button */}
+      {/* Chamada pra ação some inteira pra empresa logada — sem o botão ela
+          seria só um convite vazio. */}
+      {mostrarCandidatar && (
       <section className="pt-4">
         <div className="bg-gradient-to-r from-deepGreen to-mediumGreen rounded-2xl p-6 sm:p-8 text-center">
           <h3 className="text-xl sm:text-2xl font-bold text-white font-PrimaryFont mb-2">
@@ -128,6 +133,7 @@ const JobInformation = ({ vaga, onCandidatar, candidatando, candidatado }: JobIn
           </button>
         </div>
       </section>
+      )}
     </div>
   );
 };

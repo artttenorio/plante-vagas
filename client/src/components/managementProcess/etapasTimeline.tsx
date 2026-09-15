@@ -1,10 +1,12 @@
 import type { EtapaProcessoSeletivo } from "@/services/vaga";
+import type { ContagemEtapa } from "@/services/candidatura";
 
 type Props = {
   etapas: EtapaProcessoSeletivo[];
+  contagens?: ContagemEtapa[];
 };
 
-export default function EtapasTimeline({ etapas }: Props) {
+export default function EtapasTimeline({ etapas, contagens = [] }: Props) {
   if (etapas.length === 0) return null;
 
   const irParaEtapa = (id: number) => {
@@ -14,7 +16,9 @@ export default function EtapasTimeline({ etapas }: Props) {
   return (
     <div className="bg-paleGreen/25 rounded-2xl border border-paleGreen p-6 sm:p-8 mb-8 font-SecondFont overflow-x-auto">
       <div className="flex items-center min-w-max sm:min-w-0">
-        {etapas.map((etapa, index) => (
+        {etapas.map((etapa, index) => {
+          const contagem = contagens.find((c) => c.etapaId === etapa.id);
+          return (
           <div key={etapa.id} className={`flex items-center ${index < etapas.length - 1 ? "flex-1" : ""}`}>
             <button
               type="button"
@@ -32,6 +36,11 @@ export default function EtapasTimeline({ etapas }: Props) {
               </span>
               <span className="text-[11px] sm:text-xs font-SecondFont font-medium text-left leading-tight max-w-[100px] text-gray-700 group-hover:text-deepGreen transition-colors duration-300 break-words">
                 {etapa.nome}
+                {contagem && (
+                  <span className="block text-gray-500 font-normal mt-0.5">
+                    {contagem.total} {contagem.total === 1 ? "candidato" : "candidatos"}
+                  </span>
+                )}
               </span>
             </button>
 
@@ -39,7 +48,8 @@ export default function EtapasTimeline({ etapas }: Props) {
               <div className="flex-1 h-0.5 mx-2 bg-paleGreen min-w-[24px]" />
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

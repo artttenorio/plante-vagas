@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import type { ProcessoSeletivoPayload } from "@/services/vaga";
+import { dataInicioMinima, validarDataInicio } from "@/utils/dataInicio";
 
 type Props = {
   initialValues: ProcessoSeletivoPayload;
@@ -27,8 +28,9 @@ export default function ProcessoSeletivoForm({ initialValues, onSubmit, submitLa
       setErro("O nome do processo é obrigatório.");
       return;
     }
-    if (!dataInicio) {
-      setErro("A data de início é obrigatória.");
+    const erroData = validarDataInicio(dataInicio, initialValues.dataInicio);
+    if (erroData) {
+      setErro(erroData);
       return;
     }
     setSalvando(true);
@@ -61,6 +63,7 @@ export default function ProcessoSeletivoForm({ initialValues, onSubmit, submitLa
           <input
             type="date"
             value={dataInicio}
+            min={dataInicioMinima(initialValues.dataInicio)}
             onChange={(e) => setDataInicio(e.target.value)}
             className={inputClass}
           />

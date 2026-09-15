@@ -86,7 +86,16 @@ export class CandidaturaService {
       include: {
         etapa: {
           include: {
-            vaga: { include: { empresa: { select: EMPRESA_SELECT } } },
+            // RF017: além da etapa em que o candidato está, ele precisa
+            // enxergar o processo inteiro — todas as etapas na ordem e os
+            // dados do processo seletivo (nome, início, duração).
+            vaga: {
+              include: {
+                empresa: { select: EMPRESA_SELECT },
+                etapas: { orderBy: { ordem: 'asc' } },
+                processoSeletivo: true,
+              },
+            },
           },
         },
       },
@@ -101,6 +110,35 @@ export class CandidaturaService {
       where: { etapa: { vagaId } },
       include: { candidato: { select: CANDIDATO_SELECT }, etapa: true },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Quantos candidatos há em cada etapa da vaga, pra empresa ver o número
+   * direto na tela de "Gerenciar processo seletivo" sem abrir "Ver
+   * candidatos". Só contagem — nenhum dado pessoal trafega aqui, e por isso
+   * é um endpoint separado do findOne da vaga, que é público.
+   */
+  async contagemPorEtapa(vagaId: number, empresaId: number) {
+    await this.assertVagaPertenceEmpresa(vagaId, empresaId);
+
+    const etapas = await this.prisma.etapaProcessoSeletivo.findMany({
+      where: { vagaId },
+      select: {
+        id: true,
+        _count: { select: { candidatoEtapas: true } },
+        candidatoEtapas: { where: { rejeitado: true }, select: { id: true } },
+      },
+    });
+
+    return etapas.map((etapa) => {
+      const rejeitados = etapa.candidatoEtapas.length;
+      return {
+        etapaId: etapa.id,
+        total: etapa._count.candidatoEtapas,
+        rejeitados,
+        ativos: etapa._count.candidatoEtapas - rejeitados,
+      };
     });
   }
 
