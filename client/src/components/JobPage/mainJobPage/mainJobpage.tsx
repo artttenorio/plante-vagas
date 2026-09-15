@@ -7,6 +7,7 @@ import CompanyInfoPage from "../company-job-infomation/enterprise";
 import type { Vaga } from "@/services/vaga";
 import { candidatarSe } from "@/services/candidatura";
 import { favoritarVaga, desfavoritarVaga, getMinhasVagasFavoritas } from "@/services/favoritosVaga";
+import { getToken, getUserType } from "@/services/api";
 
 const MainJobPage = ({ vaga }: { vaga: Vaga }) => {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ const MainJobPage = ({ vaga }: { vaga: Vaga }) => {
   const [candidatado, setCandidatado] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem("userType") !== "candidate") return;
+    if (getUserType() !== "candidate") return;
     getMinhasVagasFavoritas()
       .then((favoritas) => {
         // Mesma corrida do favoritar empresa: se o candidato já clicou
@@ -32,8 +33,8 @@ const MainJobPage = ({ vaga }: { vaga: Vaga }) => {
   }, [vaga.id]);
 
   const handleCandidatar = async () => {
-    const token = localStorage.getItem("token");
-    const userType = localStorage.getItem("userType");
+    const token = getToken();
+    const userType = getUserType();
 
     if (!token) {
       navigate("/login");
@@ -60,7 +61,7 @@ const MainJobPage = ({ vaga }: { vaga: Vaga }) => {
   };
 
   const toggleBookmark = async () => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) {
       toast.error("Você precisa fazer login pra salvar uma vaga");
       return;

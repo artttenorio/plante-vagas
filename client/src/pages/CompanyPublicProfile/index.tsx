@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { getPublicCompany, type PublicCompany } from "@/services/company";
 import { favoritarEmpresa, desfavoritarEmpresa, getMinhasFavoritas } from "@/services/favoritos";
+import { getUserType } from "@/services/api";
 import { toast } from "sonner";
 
 const CompanyPublicProfile = () => {
@@ -31,7 +32,7 @@ const CompanyPublicProfile = () => {
   const [favoritando, setFavoritando] = useState(false);
   const favoritadaAlteradaPeloUsuario = useRef(false);
 
-  const ehCandidatoLogado = localStorage.getItem("userType") === "candidate";
+  const ehCandidatoLogado = getUserType() === "candidate";
 
   useEffect(() => {
     if (!empresaId) return;

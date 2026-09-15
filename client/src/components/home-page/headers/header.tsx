@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Menu, X, User, ChevronRight } from "lucide-react";
+import { getToken, getUserType } from "@/services/api";
 
 import logo from "../../../assets/images/logo.png";
 
@@ -9,8 +10,8 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  const token = localStorage.getItem("token");
-  const userType = localStorage.getItem("userType");
+  const token = getToken();
+  const userType = getUserType();
 
   useEffect(() => {
     const handleScroll = () => {

@@ -4,6 +4,7 @@ import { useUser } from "../userContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { deleteUser, updateUser, uploadUserPhoto } from "../../../services/users";
+import { clearSession } from "../../../services/api";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Lock, Info, UserCircle, Image as ImageIcon } from "lucide-react";
 
@@ -85,7 +86,7 @@ export default function MyData() {
     const loadingToast = toast.loading("Excluindo conta...");
     try {
       await deleteUser();
-      localStorage.clear();
+      clearSession();
       toast.success("Conta excluída com sucesso", { id: loadingToast });
       navigate("/login");
     } catch (error: any) {

@@ -1,4 +1,4 @@
-import { authFetch, BASE_URL } from "./api";
+import { authFetch, BASE_URL, getUserId } from "./api";
 
 const USERS_URL = `${BASE_URL}/users`;
 
@@ -48,7 +48,7 @@ export async function uploadUserPhoto(file: File) {
 }
 
 export async function deleteUser() {
-  const userId = localStorage.getItem("userId");
+  const userId = getUserId();
   const response = await authFetch(`${USERS_URL}/delete/${userId}`, {
     method: "DELETE",
   });
