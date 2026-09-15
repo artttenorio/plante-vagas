@@ -1,4 +1,4 @@
-import { authFetch, BASE_URL, registerSessionCache } from "./api";
+import { authFetch, BASE_URL, getUserId, registerSessionCache } from "./api";
 
 const COMPANY_URL = `${BASE_URL}/company`;
 
@@ -157,7 +157,7 @@ export async function uploadCompanyBanner(file: File): Promise<Company> {
 }
 
 export async function deleteCompany() {
-  const userId = localStorage.getItem("userId");
+  const userId = getUserId();
   const response = await authFetch(`${COMPANY_URL}/delete/${userId}`, {
     method: "DELETE",
   });
@@ -170,6 +170,6 @@ export async function deleteCompany() {
 }
 
 function invalidatePublicCompanyCache() {
-  const userId = Number(localStorage.getItem("userId"));
+  const userId = Number(getUserId());
   if (userId) publicCompanyCache.delete(userId);
 }
