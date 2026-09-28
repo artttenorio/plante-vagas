@@ -25,36 +25,36 @@ model Address {
 }
 
 model UserCandidate {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
-  password      String
-  name          String
-  dateNasc      DateTime
-  cpf           String   @unique
-  phone         String
-  gender        String
-  disablePerson String
-  photoUrl      String?
-  createdAt     DateTime @default(now())
-  Address         Address?
-  curriculo       Curriculo?
-  candidatoEtapas CandidatoEtapa[]
+  id                Int               @id @default(autoincrement())
+  email             String            @unique
+  password          String
+  name              String
+  dateNasc          DateTime
+  cpf               String            @unique
+  phone             String
+  gender            String
+  disablePerson     String
+  createdAt         DateTime          @default(now())
+  photoUrl          String?
+  Address           Address?
+  candidatoEtapas   CandidatoEtapa[]
+  curriculo         Curriculo?
   empresasFavoritas EmpresaFavorita[]
-  vagasFavoritadas VagaFavorita[]
+  vagasFavoritadas  VagaFavorita[]
 }
 
 model AddressCompany {
-  id              Int           @id @default(autoincrement())
-  country         String?
-  state           String?
-  city            String
-  district        String
-  street          String
-  number          String
-  complement      String?
-  postalCode      String
-  userCompanyId   Int           @unique
-  userCompany     UserCompany @relation(fields: [userCompanyId], references: [id], onDelete: Cascade)
+  id            Int         @id @default(autoincrement())
+  country       String?
+  state         String?
+  city          String
+  district      String
+  street        String
+  number        String
+  complement    String?
+  postalCode    String
+  userCompanyId Int         @unique
+  userCompany   UserCompany @relation(fields: [userCompanyId], references: [id], onDelete: Cascade)
 }
 
 // name: nome de exibição informado no cadastro, usado como fallback quando
@@ -62,189 +62,174 @@ model AddressCompany {
 // fantasyName: nome fantasia, exibido publicamente com prioridade sobre name.
 // socialReason: razão social (documento legal), não exibida publicamente.
 model UserCompany {
-  id              Int      @id @default(autoincrement())
-  email           String   @unique
-  password        String
-  name            String
-  openingDate     DateTime
-  cnpj            String   @unique
-  description     String
-  socialReason    String
-  fantasyName     String
+  id                    Int               @id @default(autoincrement())
+  email                 String            @unique
+  password              String
+  name                  String
+  cnpj                  String            @unique
+  description           String
+  socialReason          String
+  fantasyName           String
+  phone                 String
+  createdAt             DateTime          @default(now())
+  openingDate           DateTime
+  chaveIntegracao       String?           @unique
+  bannerUrl             String?
+  logoUrl               String?
+  facebookUrl           String?
+  instagramUrl          String?
+  linkedinUrl           String?
+  websiteUrl            String?
   // fantasyNameBusca/nameBusca: mesma ideia do Vaga.nomeBusca — versão
   // normalizada (sem acento, minúscula) usada só pra busca tolerante a
   // acento no backend.
-  fantasyNameBusca String?
-  nameBusca        String?
-  phone           String
-  logoUrl         String?
-  bannerUrl       String?
-  facebookUrl     String?
-  instagramUrl    String?
-  linkedinUrl     String?
-  websiteUrl      String?
-  chaveIntegracao String?  @unique
-  createdAt       DateTime @default(now())
-  Address       AddressCompany?
-  vagas         Vaga[]
+  fantasyNameBusca      String?
+  nameBusca             String?
+  Address               AddressCompany?
   candidatosFavoritaram EmpresaFavorita[]
+  vagas                 Vaga[]
 }
 
 model EmpresaFavorita {
-  id          Int      @id @default(autoincrement())
+  id          Int           @id @default(autoincrement())
   candidatoId Int
   empresaId   Int
+  createdAt   DateTime      @default(now())
   candidato   UserCandidate @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
   empresa     UserCompany   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
 
   @@unique([candidatoId, empresaId])
 }
 
 model VagaFavorita {
-  id          Int      @id @default(autoincrement())
+  id          Int           @id @default(autoincrement())
   candidatoId Int
   vagaId      Int
+  createdAt   DateTime      @default(now())
   candidato   UserCandidate @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
   vaga        Vaga          @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
 
   @@unique([candidatoId, vagaId])
 }
 
 model Vaga {
-  id         Int     @id @default(autoincrement())
-  nome       String
-  cargo      String
+  id                    Int                     @id @default(autoincrement())
+  descricao             String
+  empresaId             Int
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  cargo                 String
+  nome                  String
+  salario               Float?
+  status                String                  @default("aberta")
+  area                  String?
+  modalidade            String?
   // nomeBusca/cargoBusca: nome/cargo normalizados (sem acento, minúsculo),
   // recalculados no create/update/duplicar — usados só pra filtrar a busca
   // pública tolerante a acento no backend, nunca exibidos pro usuário.
-  nomeBusca  String?
-  cargoBusca String?
-  descricao  String
-  salario    Float?
-  status     String  @default("aberta")
-  area       String?
-  modalidade String?
-
-  empresaId         Int
-  empresa           UserCompany       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  beneficios        Beneficio[]
-  requisitos        Requisito[]
-  etapas            EtapaProcessoSeletivo[]
-  processoSeletivo  ProcessoSeletivo?
+  cargoBusca            String?
+  nomeBusca             String?
+  beneficios            Beneficio[]
+  etapas                EtapaProcessoSeletivo[]
+  processoSeletivo      ProcessoSeletivo?
+  requisitos            Requisito[]
+  empresa               UserCompany             @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   candidatosFavoritaram VagaFavorita[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model Beneficio {
   id     Int    @id @default(autoincrement())
   nome   String
-
   vagaId Int
-  vaga   Vaga @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  vaga   Vaga   @relation(fields: [vagaId], references: [id], onDelete: Cascade)
 }
 
 model Requisito {
   id     Int    @id @default(autoincrement())
   nome   String
-
   vagaId Int
-  vaga   Vaga @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  vaga   Vaga   @relation(fields: [vagaId], references: [id], onDelete: Cascade)
 }
 
 model ProcessoSeletivo {
-  id          Int      @id @default(autoincrement())
-  nome        String
-  descricao   String
+  id          Int                     @id @default(autoincrement())
+  vagaId      Int                     @unique
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
   dataInicio  DateTime
+  descricao   String
   duracaoDias Int
-
-  vagaId Int    @unique
-  vaga   Vaga   @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-
-  etapas    EtapaProcessoSeletivo[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  nome        String
+  etapas      EtapaProcessoSeletivo[]
+  vaga        Vaga                    @relation(fields: [vagaId], references: [id], onDelete: Cascade)
 }
 
 model EtapaProcessoSeletivo {
-  id          Int    @id @default(autoincrement())
-  nome        String
-  descricao   String
-  status      String @default("aberta")
-  prazoDias   Int?
-  ordem       Int    @default(0)
-
-  vagaId Int
-  vaga   Vaga @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-
+  id                 Int               @id @default(autoincrement())
+  nome               String
+  descricao          String
+  status             String            @default("aberta")
   processoSeletivoId Int?
+  vagaId             Int
+  ordem              Int               @default(0)
+  prazoDias          Int?
+  candidatoEtapas    CandidatoEtapa[]
   processoSeletivo   ProcessoSeletivo? @relation(fields: [processoSeletivoId], references: [id])
-
-  candidatoEtapas CandidatoEtapa[]
+  vaga               Vaga              @relation(fields: [vagaId], references: [id], onDelete: Cascade)
 }
 
 model CandidatoEtapa {
-  id               Int       @id @default(autoincrement())
-  statusCandidato  Boolean   @default(false)
-  dataConclusao    DateTime?
-  observacoes      String?
-  origem           String    @default("interna")
-  rejeitado        Boolean   @default(false)
-  motivoRejeicao   String?
-
-  candidatoId Int
-  candidato   UserCandidate         @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
-
-  etapaId     Int
-  etapa       EtapaProcessoSeletivo @relation(fields: [etapaId], references: [id], onDelete: Cascade)
-
-  createdAt   DateTime @default(now())
+  id              Int                   @id @default(autoincrement())
+  statusCandidato Boolean               @default(false)
+  dataConclusao   DateTime?
+  observacoes     String?
+  candidatoId     Int
+  etapaId         Int
+  createdAt       DateTime              @default(now())
+  origem          String                @default("interna")
+  motivoRejeicao  String?
+  rejeitado       Boolean               @default(false)
+  // Marcado pela empresa na ÚLTIMA etapa do processo — o candidato que
+  // ela decidiu contratar. Não é exclusivo: mais de um candidato pode
+  // ficar marcado (ex. duas vagas idênticas sendo preenchidas juntas).
+  escolhido       Boolean               @default(false)
+  candidato       UserCandidate         @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
+  etapa           EtapaProcessoSeletivo @relation(fields: [etapaId], references: [id], onDelete: Cascade)
 }
 
-
 model Curriculo {
-  id        Int @id @default(autoincrement())
-
-  usuarioId Int @unique
-  usuario   UserCandidate @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-
-  experiencias   ExperienciaProfissional[]
-  formacoes      FormacaoAcademica[]
-  certificados   Certificado[]
-  idiomas        Idioma[]
-  diferenciais   Diferencial[]
-
-  operacoesAgricolas  OperacaoAgricola[]
-  operacoesPecuarias  OperacaoPecuaria[]
-  operacoesFlorestais OperacaoFlorestal[]
+  id                  Int                       @id @default(autoincrement())
+  usuarioId           Int                       @unique
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  certificados        Certificado[]
   culturas            Cultura[]
+  usuario             UserCandidate             @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  diferenciais        Diferencial[]
+  experiencias        ExperienciaProfissional[]
+  formacoes           FormacaoAcademica[]
+  idiomas             Idioma[]
   maquinas            Maquina[]
+  operacoesAgricolas  OperacaoAgricola[]
+  operacoesFlorestais OperacaoFlorestal[]
+  operacoesPecuarias  OperacaoPecuaria[]
   tecnologias         Tecnologia[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model ExperienciaProfissional {
-  id            Int @id @default(autoincrement())
-  cargo         String
-  empresa       String
-  descricao     String
-  inicioData    DateTime
-  fimData       DateTime?
-  empregoAtual  Boolean @default(false)
-
-  curriculoId Int
-  curriculo   Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+  id           Int       @id @default(autoincrement())
+  cargo        String
+  empresa      String
+  descricao    String
+  inicioData   DateTime
+  fimData      DateTime?
+  empregoAtual Boolean   @default(false)
+  curriculoId  Int
+  curriculo    Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
 }
 
 model FormacaoAcademica {
-  id              Int @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   nivelFormacao   String
   grauFormacao    String
   curso           String
@@ -252,103 +237,111 @@ model FormacaoAcademica {
   status          String
   inicioData      DateTime
   fimData         DateTime?
-
-  curriculoId Int
-  curriculo   Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+  curriculoId     Int
+  curriculo       Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
 }
 
 model Certificado {
-  id              Int @id @default(autoincrement())
-  nomeInstituicao String
-  descricao       String
+  id               Int       @id @default(autoincrement())
+  nomeInstituicao  String
+  descricao        String
+  curriculoId      Int
   certificate_name String
-
-  curriculoId Int
-  curriculo   Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+  curriculo        Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
 }
 
 model Idioma {
-  id     Int @id @default(autoincrement())
-  idioma String
-  nivel  String
-
+  id          Int       @id @default(autoincrement())
+  idioma      String
+  nivel       String
   curriculoId Int
   curriculo   Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
 }
 
 model Diferencial {
-  id        Int @id @default(autoincrement())
-  descricao String
-
+  id          Int       @id @default(autoincrement())
+  descricao   String
   curriculoId Int
   curriculo   Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
 }
 
 model OperacaoAgricola {
-  id               Int    @id @default(autoincrement())
+  id               Int       @id @default(autoincrement())
   nome             String
   nivelExperiencia String
   descricao        String
-
-  curriculoId Int
-  curriculo   Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+  curriculoId      Int
+  curriculo        Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
 }
 
 model OperacaoPecuaria {
-  id               Int    @id @default(autoincrement())
+  id               Int       @id @default(autoincrement())
   nome             String
   nivelExperiencia String
   descricao        String
-
-  curriculoId Int
-  curriculo   Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+  curriculoId      Int
+  curriculo        Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
 }
 
 model OperacaoFlorestal {
-  id               Int    @id @default(autoincrement())
+  id               Int       @id @default(autoincrement())
   nome             String
   nivelExperiencia String
   descricao        String
-
-  curriculoId Int
-  curriculo   Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+  curriculoId      Int
+  curriculo        Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
 }
 
 model Cultura {
-  id               Int    @id @default(autoincrement())
+  id               Int       @id @default(autoincrement())
   nome             String
   nivelExperiencia String
   descricao        String
-
-  curriculoId Int
-  curriculo   Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+  curriculoId      Int
+  curriculo        Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
 }
 
 model Maquina {
-  id               Int    @id @default(autoincrement())
+  id               Int       @id @default(autoincrement())
   nome             String
   nivelExperiencia String
   descricao        String
-
-  curriculoId Int
-  curriculo   Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+  curriculoId      Int
+  curriculo        Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
 }
 
 model Tecnologia {
-  id               Int    @id @default(autoincrement())
+  id               Int       @id @default(autoincrement())
   nome             String
   nivelExperiencia String
   descricao        String
-
-  curriculoId Int
-  curriculo   Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+  curriculoId      Int
+  curriculo        Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
 }
 
+model AccessLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  userType  String
+  email     String
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
 
+  @@index([createdAt])
+  @@index([userType, userId])
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+}
 
 enum Gender {
   MALE
   FEMALE
   OTHER
 }
-

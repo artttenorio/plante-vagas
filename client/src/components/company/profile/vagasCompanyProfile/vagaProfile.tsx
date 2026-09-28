@@ -13,6 +13,7 @@ const VagaProfile = ({ vaga, onExcluida }: { vaga: Vaga; onExcluida?: (id: numbe
   const [status, setStatus] = useState(vaga.status);
   const [alterandoStatus, setAlterandoStatus] = useState(false);
   const [duplicando, setDuplicando] = useState(false);
+  const [confirmFinalizar, setConfirmFinalizar] = useState(false);
 
   const handleExcluir = async () => {
     setExcluindo(true);
@@ -28,17 +29,39 @@ const VagaProfile = ({ vaga, onExcluida }: { vaga: Vaga; onExcluida?: (id: numbe
     }
   };
 
-  const handleAlternarStatus = async () => {
+  const executarFinalizarOuReabrir = async () => {
     setAlterandoStatus(true);
     try {
       const atualizada = status === "aberta" ? await finalizarVaga(vaga.id) : await reabrirVaga(vaga.id);
       setStatus(atualizada.status);
-      toast.success(atualizada.status === "aberta" ? "Vaga reaberta" : "Vaga finalizada");
+      if (atualizada.status === "aberta") {
+        toast.success("Vaga reaberta");
+      } else {
+        const n = atualizada.candidatosRejeitados ?? 0;
+        toast.success(
+          n > 0
+            ? `Vaga finalizada. ${n} candidato${n > 1 ? "s" : ""} não escolhido${n > 1 ? "s" : ""} ${n > 1 ? "foram" : "foi"} rejeitado${n > 1 ? "s" : ""} automaticamente.`
+            : "Vaga finalizada."
+        );
+      }
     } catch (e: any) {
       toast.error(e.message || "Erro ao alterar status da vaga");
     } finally {
       setAlterandoStatus(false);
+      setConfirmFinalizar(false);
     }
+  };
+
+  const handleAlternarStatus = () => {
+    // Finalizar sempre confirma antes — fechar a vaga rejeita de verdade
+    // todo mundo que não foi escolhido (ver vaga.service.ts.finalizar), e
+    // reabrir depois não desfaz isso. Reabrir sozinho não precisa avisar
+    // de nada.
+    if (status === "aberta") {
+      setConfirmFinalizar(true);
+      return;
+    }
+    executarFinalizarOuReabrir();
   };
 
   const handleDuplicar = async () => {
@@ -55,9 +78,12 @@ const VagaProfile = ({ vaga, onExcluida }: { vaga: Vaga; onExcluida?: (id: numbe
 
   return (
     <div
-      className="group bg-white p-6 md:p-8 rounded-2xl shadow-md hover:shadow-xl
-               border border-gray-100 hover:border-mediumGreen/30
-               transition-all duration-300 flex flex-col md:flex-row gap-6 max-w-4xl mx-auto"
+      className={`group p-6 md:p-8 rounded-2xl shadow-md hover:shadow-xl
+               border transition-all duration-300 flex flex-col md:flex-row gap-6 max-w-4xl mx-auto ${
+                 status === "aberta"
+                   ? "bg-white border-gray-100 hover:border-mediumGreen/30"
+                   : "bg-red-50/60 border-red-100 hover:border-red-200"
+               }`}
     >
       {/* Company Logo */}
       <div className="flex-shrink-0 flex justify-center md:justify-start">
@@ -166,6 +192,20 @@ const VagaProfile = ({ vaga, onExcluida }: { vaga: Vaga; onExcluida?: (id: numbe
         description={`Tem certeza que deseja excluir "${vaga.nome}"? Essa ação não pode ser desfeita.`}
         onConfirm={handleExcluir}
         confirmLabel={excluindo ? "Excluindo..." : "Excluir vaga"}
+      />
+
+      <ConfirmDialog
+        open={confirmFinalizar}
+        onOpenChange={setConfirmFinalizar}
+        title="Finalizar esta vaga?"
+        description={
+          vaga.temCandidatoEscolhido
+            ? `O candidato escolhido continua no processo, mas todo mundo que se candidatou a "${vaga.nome}" e não foi escolhido será rejeitado automaticamente (notificado por WhatsApp). Se reabrir a vaga depois, vai precisar de candidaturas novas — quem foi rejeitado aqui não volta a fazer parte do processo. Deseja continuar?`
+            : `Nenhum candidato foi marcado como escolhido em "${vaga.nome}" ainda. Ao fechar mesmo assim, TODOS os candidatos que se candidataram serão rejeitados automaticamente (notificados por WhatsApp), e reabrir a vaga depois vai exigir candidaturas novas — ninguém volta a fazer parte do processo. Deseja continuar?`
+        }
+        onConfirm={executarFinalizarOuReabrir}
+        confirmLabel={alterandoStatus ? "Finalizando..." : "Finalizar vaga"}
+        confirmClassName="bg-amber-600 hover:bg-amber-700 text-white"
       />
     </div>
   );

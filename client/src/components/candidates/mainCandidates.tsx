@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { ArrowLeft, Users, Loader2, Mail, Phone, Check, X, FileText, UserX } from "lucide-react";
+import { ArrowLeft, Users, Loader2, Mail, Phone, Check, X, FileText, UserX, Award } from "lucide-react";
 import { toast } from "sonner";
 import { getVagaById, Vaga } from "@/services/vaga";
 import {
@@ -56,7 +56,14 @@ export default function MainCandidates() {
 
   const etapa = vaga?.etapas.find((e) => e.id === Number(etapaId));
 
-  const etapasOrdenadas = [...(vaga?.etapas ?? [])].sort((a, b) => a.id - b.id);
+  // Por `ordem` (a coluna que "reordenar etapas" mexe), não por `id` (ordem
+  // de criação). O backend já manda `vaga.etapas` ordenado por `ordem` —
+  // reordenar aqui de novo por `id` desfazia isso sempre que alguém tinha
+  // usado as setinhas de mover etapa, mandando "Avançar etapa" pra etapa
+  // errada (a próxima por ID de criação, não a próxima que aparece na
+  // tela) sem nenhum aviso — o candidato "sumia" da lista atual sem
+  // aparecer onde a empresa esperava.
+  const etapasOrdenadas = [...(vaga?.etapas ?? [])].sort((a, b) => a.ordem - b.ordem);
 
   const getProximaEtapa = (etapaIdAtual: number) => {
     const idx = etapasOrdenadas.findIndex((e) => e.id === etapaIdAtual);
@@ -93,6 +100,19 @@ export default function MainCandidates() {
       }
     } catch (e: any) {
       toast.error(e.message || "Erro ao avançar candidato");
+    } finally {
+      setAtualizandoId(null);
+    }
+  };
+
+  const handleEscolher = async (candidatura: Candidatura) => {
+    setAtualizandoId(candidatura.id);
+    try {
+      const atualizada = await moverCandidatura(candidatura.id, { escolhido: !candidatura.escolhido });
+      setCandidatos((prev) => prev.map((c) => (c.id === candidatura.id ? atualizada : c)));
+      toast.success(atualizada.escolhido ? "Candidato marcado como escolhido" : "Escolha desfeita");
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao marcar candidato como escolhido");
     } finally {
       setAtualizandoId(null);
     }
@@ -207,12 +227,20 @@ export default function MainCandidates() {
                     className={`text-sm px-3 py-1 rounded-full flex-shrink-0 ${
                       candidatura.rejeitado
                         ? "bg-red-100 text-red-700"
+                        : candidatura.escolhido
+                        ? "bg-amber-100 text-amber-800"
                         : candidatura.statusCandidato
                         ? "bg-green-100 text-green-700"
                         : "bg-gray-100 text-gray-600"
                     }`}
                   >
-                    {candidatura.rejeitado ? "Rejeitado" : candidatura.statusCandidato ? "Avançou" : "Em análise"}
+                    {candidatura.rejeitado
+                      ? "Rejeitado"
+                      : candidatura.escolhido
+                      ? "Escolhido"
+                      : candidatura.statusCandidato
+                      ? "Avançou"
+                      : "Em análise"}
                   </span>
                 </div>
 
@@ -250,6 +278,29 @@ export default function MainCandidates() {
                     )}
                     {getProximaEtapa(candidatura.etapaId) ? "Avançar etapa" : "Avançou"}
                   </button>
+                  {!getProximaEtapa(candidatura.etapaId) && !candidatura.rejeitado && (
+                    <button
+                      onClick={() => handleEscolher(candidatura)}
+                      disabled={atualizandoId === candidatura.id}
+                      title={
+                        candidatura.escolhido
+                          ? "Desfazer escolha"
+                          : "Marcar este candidato como o escolhido pra vaga"
+                      }
+                      className={`flex items-center gap-2 text-sm px-4 py-2 rounded-xl border transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        candidatura.escolhido
+                          ? "bg-amber-500 text-white border-amber-500 hover:bg-amber-600"
+                          : "text-amber-700 border-amber-300 hover:bg-amber-50"
+                      }`}
+                    >
+                      {atualizandoId === candidatura.id ? (
+                        <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Award size={16} aria-hidden="true" />
+                      )}
+                      {candidatura.escolhido ? "Escolhido" : "Marcar como escolhido"}
+                    </button>
+                  )}
                   <button
                     onClick={() => handleAbrirRejeitar(candidatura)}
                     disabled={atualizandoId === candidatura.id || candidatura.rejeitado}

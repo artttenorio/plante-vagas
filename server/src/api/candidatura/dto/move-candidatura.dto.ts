@@ -20,4 +20,8 @@ export class MoveCandidaturaDto {
   @IsOptional()
   @IsString()
   motivoRejeicao?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  escolhido?: boolean;
 }

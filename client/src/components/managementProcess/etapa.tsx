@@ -44,6 +44,12 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, moven
   const [excluindoVaga, setExcluindoVaga] = useState(false);
 
   const fechada = etapa.status !== "aberta";
+  // Só a primeira etapa pode ser fechada — fechar uma etapa no meio do
+  // processo notificava todo mundo que não avançou como "não selecionado"
+  // sem uma forma de reabrir pra alguém específico depois, o que confundia
+  // mais do que ajudava. Na primeira etapa, fechar tem um efeito direto e
+  // seguro: parar de receber candidaturas novas nesta vaga.
+  const ehPrimeiraEtapa = index === 1;
 
   const handleFecharEtapa = async () => {
     setFechando(true);
@@ -51,7 +57,7 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, moven
       const atualizada = await fecharEtapaService(etapa.id);
       onAtualizar(atualizada);
       setConfirmFechar(false);
-      toast.success("Etapa fechada. Candidatos que não avançaram foram notificados.");
+      toast.success("Etapa fechada. A vaga não recebe mais candidaturas novas, e quem não avançou foi notificado.");
     } catch (e: any) {
       toast.error(e.message || "Erro ao fechar etapa");
     } finally {
@@ -180,7 +186,12 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, moven
   }
 
   return (
-    <div id={`etapa-${etapa.id}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 font-SecondFont scroll-mt-24">
+    <div
+      id={`etapa-${etapa.id}`}
+      className={`rounded-2xl shadow-sm border p-6 sm:p-8 font-SecondFont scroll-mt-24 transition-colors duration-300 ${
+        fechada ? "bg-red-50/60 border-red-100" : "bg-white border-gray-100"
+      }`}
+    >
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <span className="bg-gray-100 text-gray-600 text-sm w-7 h-7 flex items-center justify-center rounded-full flex-shrink-0">{index}</span>
@@ -236,13 +247,19 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, moven
         <p className="text-gray-500 text-xs mt-2">Prazo: {etapa.prazoDias} dias</p>
       )}
 
+      {ehPrimeiraEtapa && !fechada && (
+        <p className="text-gray-400 text-xs mt-2">
+          Fechar esta etapa impede novas candidaturas nesta vaga.
+        </p>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-3 justify-end mt-6">
         <button
           onClick={() => navigate(`/candidatos?vagaId=${vagaId}&etapaId=${etapa.id}`)}
           className="flex items-center justify-center gap-2 bg-deepGreen text-sm text-white px-5 py-2.5 rounded-xl hover:bg-mediumGreen transition-colors duration-200 font-SecondFont font-semibold"
         >
           <Users size={16} aria-hidden="true" />
-          Ver candidatos{contagem ? ` (${contagem.total})` : ""}
+          Ver candidatos
         </button>
 
         <button
@@ -252,14 +269,16 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, moven
           Editar etapa
         </button>
 
-        <button
-          onClick={() => setConfirmFechar(true)}
-          disabled={fechada || fechando}
-          className="flex items-center justify-center gap-2 text-sm text-amber-700 px-5 py-2.5 rounded-xl border border-amber-200 hover:bg-amber-50 transition-colors duration-200 font-SecondFont font-medium disabled:opacity-60 disabled:hover:bg-transparent"
-        >
-          {fechando ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Lock size={16} aria-hidden="true" />}
-          {fechada ? "Etapa fechada" : fechando ? "Fechando..." : "Fechar etapa"}
-        </button>
+        {ehPrimeiraEtapa && (
+          <button
+            onClick={() => setConfirmFechar(true)}
+            disabled={fechada || fechando}
+            className="flex items-center justify-center gap-2 text-sm text-amber-700 px-5 py-2.5 rounded-xl border border-amber-200 hover:bg-amber-50 transition-colors duration-200 font-SecondFont font-medium disabled:opacity-60 disabled:hover:bg-transparent"
+          >
+            {fechando ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Lock size={16} aria-hidden="true" />}
+            {fechada ? "Etapa fechada" : fechando ? "Fechando..." : "Fechar etapa"}
+          </button>
+        )}
 
         <button
           onClick={handleExcluirClick}
@@ -275,7 +294,7 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, moven
         open={confirmFechar}
         onOpenChange={setConfirmFechar}
         title="Fechar esta etapa?"
-        description={`Ao fechar "${etapa.nome}", todos os candidatos que não avançaram vão receber uma notificação automática via WhatsApp avisando que não foram selecionados. Essa ação não pode ser desfeita.`}
+        description={`Ao fechar "${etapa.nome}", a vaga deixa de receber novas candidaturas e todos os candidatos que não avançaram vão receber uma notificação automática via WhatsApp avisando que não foram selecionados — você perde a chance de avançar quem ficou pra trás aqui. Essa ação não pode ser desfeita.`}
         onConfirm={handleFecharEtapa}
         confirmLabel={fechando ? "Fechando..." : "Fechar etapa"}
         confirmClassName="bg-amber-600 hover:bg-amber-700 text-white"

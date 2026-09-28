@@ -187,12 +187,12 @@ export class VagaService {
   }
 
   async findByEmpresa(empresaId: number) {
-    return this.prisma.vaga.findMany({
+    const vagas = await this.prisma.vaga.findMany({
       where: { empresaId },
       include: {
         beneficios: true,
         requisitos: true,
-        etapas: { orderBy: { ordem: 'asc' } },
+        etapas: this.ETAPAS_COM_ESCOLHIDO_INCLUDE,
         processoSeletivo: true,
         empresa: {
           select: {
@@ -206,6 +206,8 @@ export class VagaService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return vagas.map((vaga) => this.comTemCandidatoEscolhido(vaga));
   }
 
   async findOne(id: number) {
@@ -214,7 +216,7 @@ export class VagaService {
       include: {
         beneficios: true,
         requisitos: true,
-        etapas: { orderBy: { ordem: 'asc' } },
+        etapas: this.ETAPAS_COM_ESCOLHIDO_INCLUDE,
         processoSeletivo: true,
         empresa: {
           select: {
@@ -230,7 +232,35 @@ export class VagaService {
 
     if (!vaga) throw new ConflictException('Vaga não encontrada');
 
-    return vaga;
+    return this.comTemCandidatoEscolhido(vaga);
+  }
+
+  // Traz, pra cada etapa, só o suficiente pra saber se ela tem algum
+  // candidato escolhido — usado por comTemCandidatoEscolhido() logo abaixo.
+  // Nenhum dado pessoal de candidato trafega aqui.
+  private readonly ETAPAS_COM_ESCOLHIDO_INCLUDE = {
+    orderBy: { ordem: 'asc' as const },
+    include: {
+      candidatoEtapas: { where: { escolhido: true }, select: { id: true } },
+    },
+  };
+
+  /**
+   * `temCandidatoEscolhido`: se alguma etapa da vaga já tem um candidato
+   * marcado como escolhido. Usado pelo front pra decidir se avisa a
+   * empresa antes de finalizar uma vaga sem ninguém escolhido ainda.
+   */
+  private comTemCandidatoEscolhido<
+    T extends { etapas: { candidatoEtapas: { id: number }[] }[] },
+  >(vaga: T) {
+    const temCandidatoEscolhido = vaga.etapas.some(
+      (etapa) => etapa.candidatoEtapas.length > 0,
+    );
+    return {
+      ...vaga,
+      etapas: vaga.etapas.map(({ candidatoEtapas, ...etapa }) => etapa),
+      temCandidatoEscolhido,
+    };
   }
 
   async update(id: number, updateVagaDto: UpdateVagaDto, empresaId: number) {
@@ -320,13 +350,67 @@ export class VagaService {
     });
   }
 
+  /**
+   * Finalizar uma vaga rejeita de verdade todo candidato que não foi
+   * escolhido (fica marcado `rejeitado`, com notificação por WhatsApp) —
+   * antes só mudava `vaga.status`, sem mexer nas candidaturas, então um
+   * candidato "Em análise" continuava aparecendo assim pra ele mesmo
+   * depois da vaga fechada (`estaEncerrado()` no front do candidato só
+   * olha `rejeitado`/etapa fechada, nunca `vaga.status`). Reabrir a vaga
+   * depois NÃO desfaz essa rejeição — combinado com a empresa: reabrir é
+   * pra buscar candidato novo, não pra voltar a mexer em quem já foi
+   * dispensado aqui.
+   */
   async finalizar(id: number, empresaId: number) {
-    const vaga = await this.prisma.vaga.findUnique({ where: { id } });
+    const vaga = await this.prisma.vaga.findUnique({
+      where: { id },
+      include: {
+        empresa: { select: EMPRESA_SELECT },
+        etapas: {
+          include: {
+            candidatoEtapas: {
+              where: { rejeitado: false, escolhido: false },
+              include: { candidato: { select: CANDIDATO_SELECT } },
+            },
+          },
+        },
+      },
+    });
 
     if (!vaga) throw new ConflictException('Vaga não encontrada');
     if (vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão');
 
-    return this.prisma.vaga.update({ where: { id }, data: { status: 'fechada' } });
+    const algumEscolhido = await this.prisma.candidatoEtapa.findFirst({
+      where: { escolhido: true, etapa: { vagaId: id } },
+      select: { id: true },
+    });
+    const motivoRejeicao = algumEscolhido
+      ? 'Processo seletivo encerrado — a vaga foi preenchida com outro candidato.'
+      : 'Processo seletivo encerrado pela empresa.';
+
+    const candidaturasParaRejeitar = vaga.etapas.flatMap((e) =>
+      e.candidatoEtapas.map((c) => ({ ...c, etapaNome: e.nome, etapaId: e.id })),
+    );
+
+    const [atualizada] = await this.prisma.$transaction([
+      this.prisma.vaga.update({ where: { id }, data: { status: 'fechada' } }),
+      this.prisma.candidatoEtapa.updateMany({
+        where: { id: { in: candidaturasParaRejeitar.map((c) => c.id) } },
+        data: { rejeitado: true, statusCandidato: false, motivoRejeicao },
+      }),
+    ]);
+
+    for (const candidatura of candidaturasParaRejeitar) {
+      void this.notification.candidaturaRecusada({
+        candidato: candidatura.candidato,
+        empresa: vaga.empresa,
+        vaga: { id: vaga.id, nome: vaga.nome, cargo: vaga.cargo },
+        etapa: { id: candidatura.etapaId, nome: candidatura.etapaNome },
+        motivoRejeicao,
+      });
+    }
+
+    return { ...atualizada, candidatosRejeitados: candidaturasParaRejeitar.length };
   }
 
   async reabrir(id: number, empresaId: number) {
@@ -405,6 +489,17 @@ export class VagaService {
 
     if (!etapa) throw new ConflictException('Etapa não encontrada');
     if (etapa.vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão');
+    // Fechar uma etapa no meio do processo (não a primeira) deixava
+    // confuso: notifica todo mundo que não avançou como "não selecionado"
+    // sem dar pra reabrir depois pra ninguém específico. Restrito à
+    // primeira etapa, onde fechar tem um significado direto e reversível
+    // de menos risco: parar de receber candidaturas novas (ver aplicar()
+    // em candidatura.service.ts).
+    if (etapa.ordem !== 0) {
+      throw new ConflictException(
+        'Só é possível fechar a primeira etapa do processo seletivo',
+      );
+    }
 
     const atualizada = await this.prisma.etapaProcessoSeletivo.update({
       where: { id: etapaId },
