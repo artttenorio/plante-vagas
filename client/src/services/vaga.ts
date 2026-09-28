@@ -52,6 +52,14 @@ export interface Vaga {
   requisitos: { id: number; nome: string }[];
   etapas: EtapaProcessoSeletivo[];
   processoSeletivo?: ProcessoSeletivo | null;
+  // Se alguma etapa já tem candidato marcado como "escolhido". Só vem
+  // preenchido no findByEmpresa/findOne; ausente (undefined) em respostas
+  // de create/update/duplicar, onde nunca seria true mesmo.
+  temCandidatoEscolhido?: boolean;
+  // Só vem preenchido na resposta de finalizarVaga(): quantos candidatos
+  // foram rejeitados automaticamente ao fechar (todo mundo que não era o
+  // escolhido).
+  candidatosRejeitados?: number;
   empresaId: number;
   empresa?: {
     id: number;

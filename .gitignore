@@ -5,3 +5,7 @@ env
 .venv
 .env
 
+# relatório local com senha do banco e JWT_SECRET em texto puro — nunca subir
+docs/security-audit/
+docs/security-audit.zip
+

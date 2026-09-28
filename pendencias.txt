@@ -1349,3 +1349,300 @@ saber o que falta. Se quiser que eu comece algum desses, é só pedir.
     - candidato: Salvar sim,  Candidatar-se sim, Cadastrar empresa não
     - deslogado: Salvar sim,  Candidatar-se sim, Cadastrar empresa sim
   Zero erro de console. Banco de volta em 103 vagas no final.
+
+
+33. HISTÓRICO DE MIGRATIONS FORA DE SINCRONIA (achado ao tentar mexer no
+    schema — não é sobre nenhum pedido do professor)
+---------------------------------------------------------------------------
+[RESOLVIDO — 28/09] Ao tentar rodar `prisma migrate dev` pra adicionar o
+  campo `escolhido` (item 34), o Prisma recusou com "drift detected" e
+  pediu reset do banco (que apagaria tudo). Investigado antes de fazer
+  qualquer coisa destrutiva: alguém rodou `prisma migrate dev` direto
+  contra o Supabase compartilhado (criando os models `Admin` e
+  `AccessLog`, aparentemente uma tela de admin em andamento) sem commitar
+  o arquivo de migration gerado — `_prisma_migrations` no banco tinha o
+  registro, mas `prisma/migrations/` no repo não tinha a pasta.
+
+  Resolvido sem perder dado nenhum e sem resetar nada:
+  - `prisma db pull` (só leitura) pra trazer o schema real pro
+    schema.prisma — isso também reescreveu a formatação do arquivo
+    inteiro e apagou os comentários manuais existentes (introspecção não
+    preserva comentário); os 3 blocos de comentário que existiam
+    (UserCompany naming, fantasyNameBusca/nameBusca, nomeBusca/cargoBusca)
+    foram restaurados manualmente depois, no mesmo lugar.
+  - Reconstruí à mão o `migration.sql` de
+    `20260923224714_add_admin_and_access_log` (2 CREATE TABLE simples,
+    escrito a partir do resultado do db pull — não gerado por diff porque
+    não tem shadow database configurado neste ambiente).
+  - O Prisma ainda recusava ("migration modificada depois de aplicada")
+    porque guarda um checksum SHA-256 do conteúdo exato do arquivo
+    original em `_prisma_migrations`, e o meu arquivo reconstruído não é
+    byte-a-byte idêntico. Corrigido atualizando esse checksum via query
+    direta na tabela (`UPDATE _prisma_migrations SET checksum = ...`) pro
+    hash do meu arquivo — é só bookkeeping, não mexe em nenhuma linha de
+    dado real.
+  - Com isso, `prisma migrate dev --create-only` voltou a funcionar sem
+    drift. Gerada a migration nova (`add_candidato_escolhido`, só um
+    `ADD COLUMN`) e aplicada com `prisma migrate deploy` (não interativo,
+    sem shadow database, mais seguro em banco compartilhado).
+
+  Verificado depois: `prisma migrate status` limpo ("up to date"), e
+  contagem de linhas nas tabelas principais idêntica a antes de mexer
+  (100 vagas, 53 candidaturas, 21 empresas, 24 candidatos) — nenhum dado
+  perdido.
+
+  Aviso pro time: se alguém rodar `prisma migrate dev` direto no banco de
+  novo, commitem a pasta `prisma/migrations/<nome>/` gerada JUNTO com a
+  mudança de schema — é o que causou isso.
+
+
+34. FEEDBACK DO PROFESSOR — CONTAGEM DUPLICADA, "ESCOLHIDO",
+    CONFIRMAÇÃO AO FINALIZAR SEM ESCOLHIDO E SINALIZAÇÃO VISUAL (28/09)
+---------------------------------------------------------------------------
+[RESOLVIDO — 28/09] Cinco pedidos vindos de uma conversa com o professor.
+
+  a) Contagem de candidatos duplicada (gerenciar-processo?vagaId=100): o
+     número aparecia repetido — no badge do cabeçalho da etapa E dentro do
+     botão "Ver candidatos (N)". Removido do botão
+     (managementProcess/etapa.tsx), mantido só no badge do cabeçalho, que
+     já tinha a lógica de "(N ativos)" quando existe rejeitado — não
+     precisou mexer nisso.
+
+  b) Conceito de "escolhido": campo novo `escolhido Boolean @default(false)`
+     em CandidatoEtapa (migration `add_candidato_escolhido`). Endpoint
+     reaproveitado: `PATCH /candidatura/:id` (mesmo de sempre) agora aceita
+     `escolhido` no body. Regra: só pode marcar escolhido um candidato que
+     está na ÚLTIMA etapa do processo (409 se tentar antes) — validado
+     comparando com a etapa de maior `ordem` da vaga. Marcar escolhido
+     força `statusCandidato: true` junto (não faz sentido escolhido E "não
+     avançou"); desmarcar não mexe no statusCandidato. NÃO é exclusivo —
+     dá pra marcar mais de um candidato como escolhido na mesma vaga, de
+     propósito (o professor não quis exclusividade). Front: botão "Marcar
+     como escolhido"/"Escolhido" (ícone de troféu) em mainCandidates.tsx,
+     só aparece quando `!getProximaEtapa(...)` (já é a última etapa) e o
+     candidato não está rejeitado; badge de status no card ganhou o estado
+     "Escolhido" (âmbar), com prioridade: Rejeitado > Escolhido > Avançou >
+     Em análise.
+
+  c) Confirmação ao finalizar vaga sem escolhido: `vaga.service.ts`
+     (`findByEmpresa`/`findOne`) passou a calcular `temCandidatoEscolhido`
+     — se alguma etapa da vaga tem candidato marcado como escolhido — via
+     include enxuto (`candidatoEtapas: { where: { escolhido: true },
+     select: { id: true } }`), sem vazar dado pessoal; a lista de etapas
+     retornada continua exatamente igual, esse campo extra é removido
+     antes de devolver a resposta. Front: `handleAlternarStatus` em
+     vagaVagas.tsx e vagaProfile.tsx (as duas telas que têm "Finalizar
+     vaga") intercepta o clique — se a vaga está aberta E
+     `!temCandidatoEscolhido`, abre `ConfirmDialog` perguntando "Nenhum
+     candidato foi marcado como escolhido em [vaga] ainda. Deseja encerrar
+     as candidaturas mesmo assim?"; se já tem escolhido, finaliza direto
+     sem perguntar (reabrir vaga nunca pergunta).
+
+  d) Etapa fechada com sinalização visual: card da etapa
+     (managementProcess/etapa.tsx) fica com fundo e borda vermelho-clara
+     (`bg-red-50/60 border-red-100`) quando `etapa.status !== 'aberta'`,
+     em vez do branco padrão — "levemente vermelha" como pedido, não um
+     alerta forte.
+
+  e) Vaga finalizada com a mesma sinalização: mesmo tratamento visual nos
+     cards de vagaVagas.tsx (lista /vagas-empresa) e vagaProfile.tsx
+     (perfil da empresa) quando `status !== 'aberta'`.
+
+  Testado via API (curl direto): marcar escolhido na 1ª etapa → 409;
+  avançar pra última etapa → marcar escolhido → 200, statusCandidato vira
+  true junto; `vaga.temCandidatoEscolhido` vira true; desmarcar → volta pra
+  false; etapas da resposta não vazam candidatoEtapas. Testado no
+  navegador (Playwright): badge e botão "Escolhido" refletindo o estado
+  real depois de reload; etapa fechada com o tint vermelho e badge
+  "Fechada"; modal aparecendo certinho ao finalizar vaga sem escolhido, e
+  NÃO aparecendo quando a vaga já tem escolhido (finaliza direto); vaga
+  finalizada com o mesmo tint vermelho na lista de vagas. Zero erro de
+  console em qualquer tela. Vagas de teste apagadas ao final — banco
+  conferido em exatamente 100 vagas, sem sobra.
+
+
+35. "FECHAR ETAPA" RESTRITO À PRIMEIRA ETAPA (28/09, segunda rodada de
+    feedback do professor no mesmo dia do item 34)
+---------------------------------------------------------------------------
+[RESOLVIDO — 28/09] Print do professor: fechar uma etapa no MEIO do
+  processo (não a primeira) confundia mais do que ajudava — notifica todo
+  candidato que não avançou como "não selecionado" via WhatsApp, sem
+  nenhuma forma de reabrir depois pra alguém específico. Decisão: só a
+  primeira etapa pode ser fechada, e fechar ela passa a significar
+  literalmente "parar de receber currículos novos" — não só um aviso, um
+  bloqueio de verdade. Combinado com um segundo ponto que a própria
+  usuária levantou na conversa com o professor: finalizar a vaga sem
+  ninguém escolhido continua permitido (item 34c já resolvia isso com
+  confirmação, não bloqueio — não precisou mexer). O professor só pediu
+  reforçar o AVISO do que acontece ao fechar, não impedir a ação.
+
+  - Backend (`vaga.service.ts.fecharEtapa`): novo guard — 409 "Só é
+    possível fechar a primeira etapa do processo seletivo" se
+    `etapa.ordem !== 0`. Dinâmico: sempre a etapa que está em ordem 0 no
+    momento, então reordenar etapas continua funcionando normalmente.
+  - Backend (`candidatura.service.ts.aplicar`): fechar a primeira etapa
+    agora BLOQUEIA candidatura nova de verdade (409 "Este processo não
+    está recebendo novas candidaturas no momento"), além do bloqueio já
+    existente por `vaga.status === 'fechada'`. Corrigido de propósito um
+    bug que só apareceu ao mexer aqui: a "primeira etapa" pra candidatura
+    nova era calculada ordenando por `id` (ordem de criação), não por
+    `ordem` (a mesma coluna que reordenarEtapas() mexe) — depois de
+    reordenar etapas, uma candidatura nova podia cair na etapa errada.
+    Agora os dois usam `ordem`, consistente.
+  - Front (`managementProcess/etapa.tsx`): botão "Fechar etapa" só
+    renderiza quando `index === 1` (primeira etapa da lista, que já vem
+    ordenada por `ordem` do backend) — nas demais etapas o botão some
+    inteiro, não fica só desabilitado. Legenda cinza abaixo da descrição
+    da 1ª etapa, só enquanto aberta: "Fechar esta etapa impede novas
+    candidaturas nesta vaga." Texto do modal de confirmação reforçado:
+    agora deixa explícito que a vaga para de receber candidaturas E que
+    dá pra perder a chance de avançar quem ficou pra trás. Toast de
+    sucesso atualizado no mesmo sentido.
+
+  Testado via API: candidatar-se (201) → tentar fechar a 2ª etapa (409,
+  bloqueado) → fechar a 1ª etapa (200) → candidato novo tenta se
+  candidatar (409, bloqueado de verdade) → empresa ainda consegue mover o
+  candidato que já estava no processo pra 2ª etapa (200, sem bloqueio) —
+  ou seja, quem já entrou continua sendo processado normalmente, só
+  fecha a porta pra gente nova. No navegador: vaga com 3 etapas mostrando
+  "Fechar etapa" só na 1ª, com a legenda, e o modal com o aviso completo.
+  Zero erro de console. Vaga de teste apagada — banco de volta em 100.
+
+
+36. BUG "AVANÇAR CANDIDATO" MANDAVA PRA ETAPA ERRADA APÓS REORDENAR (28/09)
+---------------------------------------------------------------------------
+[RESOLVIDO — 28/09] Relato da usuária: "avancei um candidato de etapa e
+  ele simplesmente sumiu" — o log confirmava que o backend TINHA movido o
+  candidato de verdade (notificação "avancou_etapa" disparada), então não
+  era candidatura perdida — era ir pra etapa diferente da que a empresa
+  esperava.
+
+  Causa raiz: `mainCandidates.tsx`, a função que descobre "qual é a
+  próxima etapa" (`getProximaEtapa`, usada tanto no botão "Avançar etapa"
+  quanto pra decidir se mostra "Marcar como escolhido" na última etapa)
+  ordenava as etapas por `id` (ordem de criação) em vez de por `ordem` (a
+  mesma coluna que a funcionalidade "reordenar etapas" — setinhas
+  ↑/↓ — mexe). O backend já manda `vaga.etapas` ordenado por `ordem`
+  corretamente; o front desfazia isso reordenando de novo por `id`.
+  Then enquanto ninguém reordenava etapas, id e ordem coincidiam e nunca
+  dava pra notar — só aparecia depois de usar as setinhas de mover etapa
+  pelo menos uma vez, que é exatamente esse tipo de vaga que gera esse
+  sintoma.
+
+  Reproduzido antes do fix: vaga com 3 etapas (Triagem/Entrevista/Proposta
+  criadas nessa ordem), reordenadas na tela pra Triagem/Proposta/Entrevista
+  (Entrevista e Proposta trocadas de lugar — ordem muda, id não). Candidato
+  na Triagem, clicar "Avançar etapa" mandava ele pra "Entrevista" (a
+  última na tela) em vez de "Proposta" (a próxima de verdade) — reproduz
+  exatamente o "sumiu": a empresa olha a etapa visualmente seguinte e o
+  candidato não está lá.
+
+  Corrigido: `etapasOrdenadas` agora ordena por `ordem` em vez de `id`
+  (mainCandidates.tsx). É a MESMA classe de bug do item 35 (lá era o
+  backend calculando "primeira etapa" por `id` pra candidatura nova — já
+  corrigido); esse aqui era a mesma inconsistência do lado do front, na
+  função que decide a "próxima etapa" pra candidato já em processo. Não
+  achei mais nenhum lugar no código ordenando etapa por `id` (conferido
+  com grep no projeto inteiro).
+
+  Testado no navegador: reproduzido o bug de propósito (candidato indo
+  pra "Entrevista" em vez de "Proposta"), devolvido o candidato pra
+  Triagem, aplicado o fix, repetido o mesmo teste — foi corretamente pra
+  "Proposta" dessa vez. Vaga de teste apagada — banco de volta em 100.
+
+
+37. REGRESSÃO GERAL + POVOAMENTO MAIS RICO DO BANCO (28/09)
+---------------------------------------------------------------------------
+[RESOLVIDO — 28/09] Pedido: testar tudo depois da leva de mudanças dos
+  itens 34/35/36, e deixar o banco mais "entrosado" — poucas candidaturas
+  e vagas praticamente vazias faziam qualquer vaga parecer igual à outra.
+
+  REGRESSÃO (antes de mexer em dado):
+  - Build limpo client + server, 22 testes Vitest + 7 testes Jest, todos
+    verdes.
+  - E2E no navegador: fluxo candidato completo (login, busca, filtro,
+    Processos Seletivos, Empresas Favoritas, Vagas Salvas, logout); troca
+    de sessão empresa A → empresa B sem vazamento de cache (confirmado de
+    novo depois do fix do item 27 — um teste inicial deu falso-positivo
+    de bug por timing, corrigido esperando o seletor certo antes de
+    comparar); fluxo empresa (contagem sem duplicar, "Fechar etapa" só na
+    1ª etapa, avançar candidato, marcar escolhido, badge atualizando).
+    Zero erro de console em qualquer tela.
+
+  POVOAMENTO — script novo rodado direto via Prisma (nunca pela API, por
+  causa do webhook), cobrindo TODAS as 97 vagas elegíveis (aberta, com a
+  1ª etapa aberta — respeitando a trava do item 35) em vez de só um punhado
+  como das outras vezes:
+  - Cada vaga recebeu de 2 a 4 candidatos NOVOS além dos que já tinha, sem
+    duplicar candidato+vaga (checado contra o banco inteiro antes de
+    inserir), com um teto de 22 candidaturas por candidato pra não
+    concentrar tudo em pouca gente.
+  - Distribuição de status por sorteio ponderado: ~50% em análise, ~22%
+    avançou, ~18% rejeitado (motivo variado, sorteado entre 6 frases),
+    ~10% escolhido (sempre na última etapa da vaga, com statusCandidato
+    junto — usa o campo `escolhido` do item 34).
+  - `createdAt` espalhado entre 1 e 30 dias atrás, coerente com a
+    categoria (rejeitado/escolhido mais antigos que "em análise").
+  - Resultado: 53 → 296 candidaturas. Zero vagas sem nenhum candidato (era
+    a maioria antes). Todas as 20 empresas reais com 11 a 18 candidaturas
+    cada, bem equilibrado. Breakdown final: 143 em análise, 73 avançado,
+    48 rejeitado, 32 escolhido.
+
+  Validado no navegador depois: tela de gerenciar processo de uma vaga
+  recém-populada (IrrigaMais) mostrando contagem certa por etapa; tela de
+  candidatos com dado real; candidato com 16 candidaturas (Isabela Cristina
+  Dias) mostrando 15 processos ativos + 1 encerrado, cada um com logo e
+  nome de empresa diferente, timeline certa por processo, zero erro de
+  console — confirma que o volume maior não quebra nada e que a variedade
+  de empresas/logos resolve a sensação de "vagas iguais" (era mais reflexo
+  do banco quase vazio do que duplicação de imagem).
+
+  Conferido no final: 100 vagas (sem alteração), zero lixo de teste
+  sobrando, testes automatizados passando de novo.
+
+
+38. "FINALIZAR VAGA" NÃO REJEITAVA NINGUÉM DE VERDADE (28/09)
+---------------------------------------------------------------------------
+[RESOLVIDO — 28/09] Relato: fechou uma vaga que já tinha um escolhido e
+  não apareceu nenhum modal. Pedido: modal avisando que, ao fechar, todo
+  mundo que se candidatou e não foi escolhido é rejeitado, e que reabrir
+  depois vai exigir candidato novo (não os mesmos).
+
+  Investigando, achei um gap: `finalizar()` só trocava `vaga.status` pra
+  "fechada" — nunca mexia em nenhuma candidatura. Candidato "Em análise"
+  numa vaga fechada continuava aparecendo "Em análise" pra ele mesmo,
+  porque a tela do candidato (`estaEncerrado()` em selectionProcess.tsx)
+  só olha `candidatura.rejeitado` ou `etapa.status === 'fechada'` — nunca
+  `vaga.status`. Por isso o modal do item 34c (só aparecia quando NÃO
+  tinha escolhido) também não fazia sentido mais: faltava o mesmo aviso
+  pro caso COM escolhido, porque agora fechar passou a ter consequência de
+  verdade nos dois casos.
+
+  - Backend (`vaga.service.ts.finalizar`): agora, na mesma transação que
+    fecha a vaga, marca `rejeitado: true` em toda candidatura que não é
+    `escolhido` e ainda não estava `rejeitado` (quem já tinha sido
+    rejeitado manualmente antes mantém o motivo original, não é
+    sobrescrito — testado explicitamente). Motivo automático varia: "a
+    vaga foi preenchida com outro candidato" se tem alguém escolhido,
+    "processo seletivo encerrado pela empresa" se não tem ninguém
+    escolhido. Notificação `candidaturaRecusada` (mesmo webhook das
+    rejeições manuais) disparada pra cada um. Retorna
+    `candidatosRejeitados: N` junto com a vaga atualizada.
+  - Front (`vagaVagas.tsx` e `vagaProfile.tsx`, as duas telas com
+    "Finalizar vaga"): modal de confirmação agora aparece SEMPRE ao
+    finalizar (antes só aparecia sem escolhido), com texto diferente pra
+    cada caso — combinado que reabrir depois não desfaz a rejeição, e que
+    isso trava propositalmente (reabrir é pra buscar gente nova, não pra
+    voltar a mexer em quem já foi dispensado). Toast final usa o
+    `candidatosRejeitados` retornado: "Vaga finalizada. N candidato(s) não
+    escolhido(s) foram rejeitados automaticamente." (ou só "Vaga
+    finalizada." se não tinha ninguém pra rejeitar).
+
+  Testado via API nos dois cenários: vaga com 3 candidatos (1 em análise,
+  1 escolhido, 1 já rejeitado manualmente antes) → finalizar rejeitou só o
+  "em análise" (motivo novo), manteve o escolhido intocado e preservou o
+  motivo original de quem já tinha sido rejeitado, `candidatosRejeitados:
+  1`; vaga com 2 candidatos sem ninguém escolhido → finalizar rejeitou os
+  2, `candidatosRejeitados: 2`. No navegador: modal com o texto certo nos
+  dois casos (com/sem escolhido), toast com a contagem certa. Zero erro de
+  console. Vagas de teste apagadas — banco de volta em 100.

@@ -32,7 +32,11 @@ export class CandidaturaService {
   async aplicar(input: CandidaturaInput) {
     const vaga = await this.prisma.vaga.findUnique({
       where: { id: input.vagaId },
-      include: { etapas: { orderBy: { id: 'asc' }, take: 1 } },
+      // ordenado por `ordem` (não por `id`) — é o mesmo campo que
+      // reordenarEtapas() mexe e que fecharEtapa() usa pra decidir qual é
+      // "a primeira etapa"; usar `id` aqui ficaria errado depois de
+      // qualquer reordenação.
+      include: { etapas: { orderBy: { ordem: 'asc' }, take: 1 } },
     });
     if (!vaga) throw new NotFoundException('Vaga não encontrada');
     if (vaga.status === 'fechada') {
@@ -42,6 +46,15 @@ export class CandidaturaService {
     const primeiraEtapa = vaga.etapas[0];
     if (!primeiraEtapa) {
       throw new ConflictException('Vaga não possui etapas configuradas');
+    }
+    // A empresa pode fechar só a primeira etapa (ver fecharEtapa() em
+    // vaga.service.ts) especificamente pra parar de receber candidaturas
+    // novas sem precisar finalizar a vaga inteira — então isso também
+    // precisa bloquear aqui, não só virar um aviso visual.
+    if (primeiraEtapa.status !== 'aberta') {
+      throw new ConflictException(
+        'Este processo não está recebendo novas candidaturas no momento',
+      );
     }
 
     const candidaturaExistente = await this.prisma.candidatoEtapa.findFirst({
@@ -165,7 +178,14 @@ export class CandidaturaService {
       include: {
         etapa: {
           include: {
-            vaga: { include: { empresa: { select: EMPRESA_SELECT } } },
+            vaga: {
+              include: {
+                empresa: { select: EMPRESA_SELECT },
+                // só pra descobrir qual é a última etapa da vaga, na
+                // checagem de "escolhido" logo abaixo
+                etapas: { orderBy: { ordem: 'desc' }, take: 1 },
+              },
+            },
           },
         },
       },
@@ -181,6 +201,15 @@ export class CandidaturaService {
       });
       if (!novaEtapa || novaEtapa.vagaId !== candidatura.etapa.vagaId) {
         throw new ConflictException('Etapa inválida para esta vaga');
+      }
+    }
+
+    if (dto.escolhido) {
+      const ultimaEtapa = candidatura.etapa.vaga.etapas[0];
+      if (ultimaEtapa?.id !== candidatura.etapaId) {
+        throw new ConflictException(
+          'Só é possível marcar um candidato como escolhido na última etapa do processo',
+        );
       }
     }
 
@@ -202,6 +231,12 @@ export class CandidaturaService {
         }),
         ...(dto.motivoRejeicao !== undefined && {
           motivoRejeicao: dto.motivoRejeicao,
+        }),
+        ...(dto.escolhido !== undefined && {
+          escolhido: dto.escolhido,
+          // escolher implica ter avançado; desmarcar não mexe no avançou,
+          // já que o candidato continua tendo passado por essa etapa
+          ...(dto.escolhido && { statusCandidato: true }),
         }),
       },
       include: {
