@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Loader2, Users, Lock, AlertTriangle, ChevronUp, ChevronDown } from "lucide-react";
+import { Loader2, Users, Lock, AlertTriangle, ChevronUp, ChevronDown, EllipsisVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { EtapaProcessoSeletivo, deleteEtapa, deleteVaga, updateEtapaService, fecharEtapa as fecharEtapaService } from "@/services/vaga";
 import type { ContagemEtapa } from "@/services/candidatura";
@@ -253,7 +260,7 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, moven
         </p>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-3 justify-end mt-6">
+      <div className="flex items-center justify-end gap-2 mt-6">
         <button
           onClick={() => navigate(`/candidatos?vagaId=${vagaId}&etapaId=${etapa.id}`)}
           className="flex items-center justify-center gap-2 bg-deepGreen text-sm text-white px-5 py-2.5 rounded-xl hover:bg-mediumGreen transition-colors duration-200 font-SecondFont font-semibold"
@@ -262,32 +269,46 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, moven
           Ver candidatos
         </button>
 
-        <button
-          onClick={() => setEditando(true)}
-          className="text-sm text-gray-700 px-5 py-2.5 rounded-xl border border-gray-200 hover:border-deepGreen hover:text-deepGreen transition-colors duration-200 font-SecondFont font-medium"
-        >
-          Editar etapa
-        </button>
+        {/* modal={false}: com o menu modal, o Radix trava o body (pointer-events:none)
+            e, ao abrir a confirmação a partir de um item, restaura esse bloqueio
+            de forma errada — a página ficava sem clique depois de cancelar. */}
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Mais opções da etapa"
+              className="flex items-center justify-center p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:border-deepGreen hover:text-deepGreen transition-colors duration-200"
+            >
+              <EllipsisVertical size={18} aria-hidden="true" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="font-SecondFont min-w-44">
+            <DropdownMenuItem onSelect={() => setEditando(true)}>
+              Editar etapa
+            </DropdownMenuItem>
 
-        {ehPrimeiraEtapa && (
-          <button
-            onClick={() => setConfirmFechar(true)}
-            disabled={fechada || fechando}
-            className="flex items-center justify-center gap-2 text-sm text-amber-700 px-5 py-2.5 rounded-xl border border-amber-200 hover:bg-amber-50 transition-colors duration-200 font-SecondFont font-medium disabled:opacity-60 disabled:hover:bg-transparent"
-          >
-            {fechando ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Lock size={16} aria-hidden="true" />}
-            {fechada ? "Etapa fechada" : fechando ? "Fechando..." : "Fechar etapa"}
-          </button>
-        )}
+            {ehPrimeiraEtapa && (
+              <DropdownMenuItem
+                onSelect={() => setConfirmFechar(true)}
+                disabled={fechada || fechando}
+                className="text-amber-700 focus:text-amber-700"
+              >
+                <Lock size={14} aria-hidden="true" />
+                {fechada ? "Etapa fechada" : "Fechar etapa"}
+              </DropdownMenuItem>
+            )}
 
-        <button
-          onClick={handleExcluirClick}
-          disabled={excluindo}
-          className="flex items-center justify-center gap-2 text-sm text-red-600 px-5 py-2.5 rounded-xl border border-red-200 hover:bg-red-50 transition-colors duration-200 font-SecondFont font-medium disabled:opacity-60"
-        >
-          {excluindo && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
-          {excluindo ? "Excluindo..." : "Excluir etapa"}
-        </button>
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem
+              onSelect={handleExcluirClick}
+              disabled={excluindo}
+              className="text-red-600 focus:text-red-600"
+            >
+              {excluindo ? "Excluindo..." : "Excluir etapa"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <ConfirmDialog
