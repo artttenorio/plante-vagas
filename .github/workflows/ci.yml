@@ -68,3 +68,43 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # CD: a cada push na main, depois que server e client passaram, publica na EC2 (AWS)
+  deploy:
+    name: Deploy (AWS EC2)
+    needs: [server, client]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-producao
+      cancel-in-progress: false
+    environment:
+      name: producao
+      url: https://plantevagas.com.br
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install client dependencies
+        run: npm ci --prefix client
+
+      - name: Credenciais (chave SSH e .env de producao)
+        run: |
+          mkdir -p ~/.ssh infra/.state
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/plante-vagas-aws.pem
+          chmod 600 ~/.ssh/plante-vagas-aws.pem
+          echo "${{ secrets.PROD_ENV }}" > infra/.state/.env
+          chmod 600 infra/.state/.env
+
+      - name: Deploy
+        run: ./infra/deploy.sh
+
+      - name: Smoke test
+        run: |
+          curl -fsS -o /dev/null https://plantevagas.com.br/
+          curl -fsS -o /dev/null https://plantevagas.com.br/api/vaga/find/all

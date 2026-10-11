@@ -9,3 +9,6 @@ env
 docs/security-audit/
 docs/security-audit.zip
 
+
+# segredos gerados pelo infra/gcp-setup.sh
+infra/.state/
