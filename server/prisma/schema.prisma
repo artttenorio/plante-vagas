@@ -193,6 +193,10 @@ model CandidatoEtapa {
   // ela decidiu contratar. Não é exclusivo: mais de um candidato pode
   // ficar marcado (ex. duas vagas idênticas sendo preenchidas juntas).
   escolhido       Boolean               @default(false)
+  // O resultado da etapa atual (avançou / não avançou) só é mandado por
+  // WhatsApp quando a empresa fecha a etapa. Marca quem já recebeu, pra
+  // finalizar/reabrir a vaga não repetir a mensagem.
+  resultadoNotificado Boolean           @default(false)
   candidato       UserCandidate         @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
   etapa           EtapaProcessoSeletivo @relation(fields: [etapaId], references: [id], onDelete: Cascade)
 }

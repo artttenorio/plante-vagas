@@ -62,17 +62,23 @@ export class CandidaturaNotificationService {
     });
   }
 
-  async processoEncerrado(params: {
+  /**
+   * Fechamento da ÚLTIMA etapa: candidato que avançou nela foi aprovado no
+   * processo. `escolhido` diz se a empresa o marcou como contratado.
+   */
+  async aprovadoProcesso(params: {
     candidato: CandidatoPayload;
     empresa: EmpresaPayload;
     vaga: VagaPayload;
     etapa: EtapaPayload;
+    escolhido: boolean;
   }) {
-    await this.enviar('processo_encerrado', {
+    await this.enviar('aprovado_processo', {
       candidato: this.mapCandidato(params.candidato),
       empresa: this.mapEmpresa(params.empresa),
       vaga: params.vaga,
       etapa: params.etapa,
+      escolhido: params.escolhido,
     });
   }
 
