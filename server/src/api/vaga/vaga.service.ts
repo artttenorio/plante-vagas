@@ -9,6 +9,8 @@ import { normalizeText } from '../../common/normalizeText';
 const CANDIDATO_SELECT = { id: true, name: true, email: true, phone: true };
 const EMPRESA_SELECT = { id: true, fantasyName: true, name: true };
 const ITENS_POR_PAGINA_PADRAO = 10;
+const MOTIVO_REJEICAO_ETAPA_FECHADA =
+  'Etapa encerrada — você não foi selecionado para seguir no processo.';
 const ITENS_POR_PAGINA_MAXIMO = 50;
 
 export interface FindAllVagaQuery {
@@ -360,6 +362,9 @@ export class VagaService {
    * depois NÃO desfaz essa rejeição — combinado com a empresa: reabrir é
    * pra buscar candidato novo, não pra voltar a mexer em quem já foi
    * dispensado aqui.
+   *
+   * Escolhido que ainda não recebeu a aprovação (última etapa não foi
+   * fechada) é avisado aqui.
    */
   async finalizar(id: number, empresaId: number) {
     const vaga = await this.prisma.vaga.findUnique({
@@ -369,7 +374,7 @@ export class VagaService {
         etapas: {
           include: {
             candidatoEtapas: {
-              where: { rejeitado: false, escolhido: false },
+              where: { rejeitado: false },
               include: { candidato: { select: CANDIDATO_SELECT } },
             },
           },
@@ -388,25 +393,43 @@ export class VagaService {
       ? 'Processo seletivo encerrado — a vaga foi preenchida com outro candidato.'
       : 'Processo seletivo encerrado pela empresa.';
 
-    const candidaturasParaRejeitar = vaga.etapas.flatMap((e) =>
+    const candidaturas = vaga.etapas.flatMap((e) =>
       e.candidatoEtapas.map((c) => ({ ...c, etapaNome: e.nome, etapaId: e.id })),
     );
+    // escolhido que já recebeu a aprovação no fechamento da última etapa
+    // não precisa ser avisado de novo
+    const escolhidos = candidaturas.filter((c) => c.escolhido && !c.resultadoNotificado);
+    const candidaturasParaRejeitar = candidaturas.filter((c) => !c.escolhido);
 
     const [atualizada] = await this.prisma.$transaction([
       this.prisma.vaga.update({ where: { id }, data: { status: 'fechada' } }),
       this.prisma.candidatoEtapa.updateMany({
         where: { id: { in: candidaturasParaRejeitar.map((c) => c.id) } },
-        data: { rejeitado: true, statusCandidato: false, motivoRejeicao },
+        data: { rejeitado: true, statusCandidato: false, motivoRejeicao, resultadoNotificado: true },
+      }),
+      this.prisma.candidatoEtapa.updateMany({
+        where: { id: { in: escolhidos.map((c) => c.id) } },
+        data: { resultadoNotificado: true },
       }),
     ]);
 
+    const vagaPayload = { id: vaga.id, nome: vaga.nome, cargo: vaga.cargo };
     for (const candidatura of candidaturasParaRejeitar) {
       void this.notification.candidaturaRecusada({
         candidato: candidatura.candidato,
         empresa: vaga.empresa,
-        vaga: { id: vaga.id, nome: vaga.nome, cargo: vaga.cargo },
+        vaga: vagaPayload,
         etapa: { id: candidatura.etapaId, nome: candidatura.etapaNome },
         motivoRejeicao,
+      });
+    }
+    for (const candidatura of escolhidos) {
+      void this.notification.aprovadoProcesso({
+        candidato: candidatura.candidato,
+        empresa: vaga.empresa,
+        vaga: vagaPayload,
+        etapa: { id: candidatura.etapaId, nome: candidatura.etapaNome },
+        escolhido: true,
       });
     }
 
@@ -478,41 +501,107 @@ export class VagaService {
     );
   }
 
+  /**
+   * Fechar a etapa encerra o resultado de todo mundo nela, de uma vez:
+   * quem foi marcado "avançou" passa pra próxima etapa (na última, foi
+   * aprovado no processo) e quem ficou sem decisão é rejeitado em massa.
+   * Todos são avisados por WhatsApp aqui — menos quem já tinha sido
+   * rejeitado, que recebeu o aviso na hora (ver mover() em
+   * candidatura.service.ts).
+   *
+   * Fechar a primeira etapa continua fazendo a vaga parar de receber
+   * candidaturas novas (ver aplicar() em candidatura.service.ts).
+   */
   async fecharEtapa(etapaId: number, empresaId: number) {
     const etapa = await this.prisma.etapaProcessoSeletivo.findUnique({
       where: { id: etapaId },
       include: {
-        vaga: { include: { empresa: { select: EMPRESA_SELECT } } },
-        candidatoEtapas: { where: { rejeitado: false }, include: { candidato: { select: CANDIDATO_SELECT } } },
+        vaga: {
+          include: {
+            empresa: { select: EMPRESA_SELECT },
+            etapas: { orderBy: { ordem: 'asc' } },
+          },
+        },
+        candidatoEtapas: { include: { candidato: { select: CANDIDATO_SELECT } } },
       },
     });
 
     if (!etapa) throw new ConflictException('Etapa não encontrada');
     if (etapa.vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão');
-    // Fechar uma etapa no meio do processo (não a primeira) deixava
-    // confuso: notifica todo mundo que não avançou como "não selecionado"
-    // sem dar pra reabrir depois pra ninguém específico. Restrito à
-    // primeira etapa, onde fechar tem um significado direto e reversível
-    // de menos risco: parar de receber candidaturas novas (ver aplicar()
-    // em candidatura.service.ts).
-    if (etapa.ordem !== 0) {
+    if (etapa.status !== 'aberta') throw new ConflictException('Esta etapa já está fechada');
+
+    const etapas = etapa.vaga.etapas;
+    const posicao = etapas.findIndex((e) => e.id === etapa.id);
+    // Os aprovados de uma etapa anterior ainda aberta cairiam nesta depois
+    // de fechada, sem ninguém pra decidir o resultado deles.
+    if (etapas.slice(0, posicao).some((e) => e.status === 'aberta')) {
       throw new ConflictException(
-        'Só é possível fechar a primeira etapa do processo seletivo',
+        'Feche as etapas anteriores antes desta — os candidatos aprovados nelas ainda vão chegar aqui',
+      );
+    }
+    const proximaEtapa = etapas[posicao + 1] ?? null;
+    if (proximaEtapa && proximaEtapa.status !== 'aberta') {
+      throw new ConflictException(
+        `A próxima etapa ("${proximaEtapa.nome}") já está fechada, então não há pra onde mover quem avançou`,
       );
     }
 
-    const atualizada = await this.prisma.etapaProcessoSeletivo.update({
-      where: { id: etapaId },
-      data: { status: 'fechada' },
-    });
+    const aprovados = etapa.candidatoEtapas.filter((c) => !c.rejeitado && c.statusCandidato);
+    const semDecisao = etapa.candidatoEtapas.filter((c) => !c.rejeitado && !c.statusCandidato);
+    const idsAprovados = aprovados.map((c) => c.id);
 
-    for (const candidatoEtapa of etapa.candidatoEtapas) {
-      void this.notification.processoEncerrado({
-        candidato: candidatoEtapa.candidato,
-        empresa: etapa.vaga.empresa,
-        vaga: { id: etapa.vaga.id, nome: etapa.vaga.nome, cargo: etapa.vaga.cargo },
-        etapa: { id: etapa.id, nome: etapa.nome },
+    const [atualizada] = await this.prisma.$transaction([
+      this.prisma.etapaProcessoSeletivo.update({
+        where: { id: etapaId },
+        data: { status: 'fechada' },
+      }),
+      this.prisma.candidatoEtapa.updateMany({
+        where: { id: { in: semDecisao.map((c) => c.id) } },
+        data: { rejeitado: true, motivoRejeicao: MOTIVO_REJEICAO_ETAPA_FECHADA, resultadoNotificado: true },
+      }),
+      proximaEtapa
+        ? // entra na próxima etapa sem decisão nenhuma ainda
+          this.prisma.candidatoEtapa.updateMany({
+            where: { id: { in: idsAprovados } },
+            data: { etapaId: proximaEtapa.id, statusCandidato: false, resultadoNotificado: false },
+          })
+        : this.prisma.candidatoEtapa.updateMany({
+            where: { id: { in: idsAprovados } },
+            data: { resultadoNotificado: true },
+          }),
+    ]);
+
+    const empresa = etapa.vaga.empresa;
+    const vaga = { id: etapa.vaga.id, nome: etapa.vaga.nome, cargo: etapa.vaga.cargo };
+    const etapaFechada = { id: etapa.id, nome: etapa.nome };
+
+    for (const c of semDecisao) {
+      void this.notification.candidaturaRecusada({
+        candidato: c.candidato,
+        empresa,
+        vaga,
+        etapa: etapaFechada,
+        motivoRejeicao: MOTIVO_REJEICAO_ETAPA_FECHADA,
       });
+    }
+    for (const c of aprovados) {
+      if (proximaEtapa) {
+        void this.notification.avancouEtapa({
+          candidato: c.candidato,
+          empresa,
+          vaga,
+          etapaAnterior: etapaFechada,
+          etapa: { id: proximaEtapa.id, nome: proximaEtapa.nome },
+        });
+      } else {
+        void this.notification.aprovadoProcesso({
+          candidato: c.candidato,
+          empresa,
+          vaga,
+          etapa: etapaFechada,
+          escolhido: c.escolhido,
+        });
+      }
     }
 
     return atualizada;

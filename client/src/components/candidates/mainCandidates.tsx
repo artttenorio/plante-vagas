@@ -65,6 +65,10 @@ export default function MainCandidates() {
   // aparecer onde a empresa esperava.
   const etapasOrdenadas = [...(vaga?.etapas ?? [])].sort((a, b) => a.ordem - b.ordem);
 
+  // Etapa fechada = resultado já mandado por WhatsApp; a decisão fica travada
+  const etapaFechada = (etapaIdAtual: number) =>
+    etapasOrdenadas.find((e) => e.id === etapaIdAtual)?.status === "fechada";
+
   const getProximaEtapa = (etapaIdAtual: number) => {
     const idx = etapasOrdenadas.findIndex((e) => e.id === etapaIdAtual);
     if (idx === -1) return null;
@@ -76,7 +80,7 @@ export default function MainCandidates() {
     try {
       const atualizada = await moverCandidatura(candidaturaId, { statusCandidato });
       setCandidatos((prev) => prev.map((c) => (c.id === candidaturaId ? atualizada : c)));
-      toast.success(statusCandidato ? "Candidato marcado como avançado" : "Candidato marcado como não avançado");
+      toast.success(statusCandidato ? "Candidato marcado como avançado" : "Avanço desfeito — candidato sem decisão");
     } catch (e: any) {
       toast.error(e.message || "Erro ao atualizar candidato");
     } finally {
@@ -84,20 +88,19 @@ export default function MainCandidates() {
     }
   };
 
+  // Só marca: o candidato continua nesta etapa até ela ser fechada, e aí
+  // passa pra próxima e recebe o aviso por WhatsApp (fecharEtapa no backend).
   const handleAvancarEtapa = async (candidatura: Candidatura) => {
     const proximaEtapa = getProximaEtapa(candidatura.etapaId);
     setAtualizandoId(candidatura.id);
     try {
-      if (proximaEtapa) {
-        await moverCandidatura(candidatura.id, { etapaId: proximaEtapa.id, statusCandidato: false });
-        // a candidatura saiu da etapa que está sendo vista aqui — remove da lista atual
-        setCandidatos((prev) => prev.filter((c) => c.id !== candidatura.id));
-        toast.success(`Candidato movido para a etapa "${proximaEtapa.nome}"`);
-      } else {
-        const atualizada = await moverCandidatura(candidatura.id, { statusCandidato: true });
-        setCandidatos((prev) => prev.map((c) => (c.id === candidatura.id ? atualizada : c)));
-        toast.success("Candidato aprovado — esta é a última etapa do processo");
-      }
+      const atualizada = await moverCandidatura(candidatura.id, { statusCandidato: true });
+      setCandidatos((prev) => prev.map((c) => (c.id === candidatura.id ? atualizada : c)));
+      toast.success(
+        proximaEtapa
+          ? `Candidato vai para "${proximaEtapa.nome}" quando esta etapa for fechada`
+          : "Candidato aprovado — ele será avisado quando esta etapa for fechada",
+      );
     } catch (e: any) {
       toast.error(e.message || "Erro ao avançar candidato");
     } finally {
@@ -132,7 +135,7 @@ export default function MainCandidates() {
         motivoRejeicao: motivoRejeicao.trim() || MENSAGEM_PADRAO_REJEICAO,
       });
       setCandidatos((prev) => prev.map((c) => (c.id === rejeitarAlvo.id ? atualizada : c)));
-      toast.success("Candidato rejeitado");
+      toast.success("Candidato rejeitado e avisado pelo WhatsApp");
       setRejeitarAlvo(null);
     } catch (e: any) {
       toast.error(e.message || "Erro ao rejeitar candidato");
@@ -260,15 +263,15 @@ export default function MainCandidates() {
                   </button>
                   <button
                     onClick={() => handleAtualizarStatus(candidatura.id, false)}
-                    disabled={atualizandoId === candidatura.id || candidatura.rejeitado || !candidatura.statusCandidato}
+                    disabled={atualizandoId === candidatura.id || candidatura.rejeitado || !candidatura.statusCandidato || etapaFechada(candidatura.etapaId)}
                     className="flex items-center gap-2 text-sm text-gray-600 px-4 py-2 rounded-xl border border-gray-200 hover:border-red-300 hover:text-red-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <X size={16} aria-hidden="true" />
-                    Não avançou
+                    Desfazer avanço
                   </button>
                   <button
                     onClick={() => handleAvancarEtapa(candidatura)}
-                    disabled={atualizandoId === candidatura.id || candidatura.rejeitado || candidatura.statusCandidato}
+                    disabled={atualizandoId === candidatura.id || candidatura.rejeitado || candidatura.statusCandidato || etapaFechada(candidatura.etapaId)}
                     className="flex items-center gap-2 text-sm text-white bg-deepGreen px-4 py-2 rounded-xl hover:bg-mediumGreen transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {atualizandoId === candidatura.id ? (
@@ -276,12 +279,12 @@ export default function MainCandidates() {
                     ) : (
                       <Check size={16} aria-hidden="true" />
                     )}
-                    {getProximaEtapa(candidatura.etapaId) ? "Avançar etapa" : "Avançou"}
+                    Avançou
                   </button>
                   {!getProximaEtapa(candidatura.etapaId) && !candidatura.rejeitado && (
                     <button
                       onClick={() => handleEscolher(candidatura)}
-                      disabled={atualizandoId === candidatura.id}
+                      disabled={atualizandoId === candidatura.id || etapaFechada(candidatura.etapaId)}
                       title={
                         candidatura.escolhido
                           ? "Desfazer escolha"
@@ -303,7 +306,7 @@ export default function MainCandidates() {
                   )}
                   <button
                     onClick={() => handleAbrirRejeitar(candidatura)}
-                    disabled={atualizandoId === candidatura.id || candidatura.rejeitado}
+                    disabled={atualizandoId === candidatura.id || candidatura.rejeitado || etapaFechada(candidatura.etapaId)}
                     className="flex items-center gap-2 text-sm text-white bg-red-600 px-4 py-2 rounded-xl hover:bg-red-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <UserX size={16} aria-hidden="true" />

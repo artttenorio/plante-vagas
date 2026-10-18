@@ -51,12 +51,12 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, moven
   const [excluindoVaga, setExcluindoVaga] = useState(false);
 
   const fechada = etapa.status !== "aberta";
-  // Só a primeira etapa pode ser fechada — fechar uma etapa no meio do
-  // processo notificava todo mundo que não avançou como "não selecionado"
-  // sem uma forma de reabrir pra alguém específico depois, o que confundia
-  // mais do que ajudava. Na primeira etapa, fechar tem um efeito direto e
-  // seguro: parar de receber candidaturas novas nesta vaga.
+  // Fechar a etapa encerra o resultado de todo mundo nela, com aviso por
+  // WhatsApp: quem avançou vai pra próxima etapa (ou é aprovado, se esta for
+  // a última) e quem ficou sem decisão é rejeitado em massa. Na primeira
+  // etapa, fechar também faz a vaga parar de receber candidaturas novas.
   const ehPrimeiraEtapa = index === 1;
+  const ehUltimaEtapa = index === totalEtapas;
 
   const handleFecharEtapa = async () => {
     setFechando(true);
@@ -64,7 +64,7 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, moven
       const atualizada = await fecharEtapaService(etapa.id);
       onAtualizar(atualizada);
       setConfirmFechar(false);
-      toast.success("Etapa fechada. A vaga não recebe mais candidaturas novas, e quem não avançou foi notificado.");
+      toast.success("Etapa fechada. Os candidatos foram avisados do resultado pelo WhatsApp.");
     } catch (e: any) {
       toast.error(e.message || "Erro ao fechar etapa");
     } finally {
@@ -287,16 +287,14 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, moven
               Editar etapa
             </DropdownMenuItem>
 
-            {ehPrimeiraEtapa && (
-              <DropdownMenuItem
-                onSelect={() => setConfirmFechar(true)}
-                disabled={fechada || fechando}
-                className="text-amber-700 focus:text-amber-700"
-              >
-                <Lock size={14} aria-hidden="true" />
-                {fechada ? "Etapa fechada" : "Fechar etapa"}
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem
+              onSelect={() => setConfirmFechar(true)}
+              disabled={fechada || fechando}
+              className="text-amber-700 focus:text-amber-700"
+            >
+              <Lock size={14} aria-hidden="true" />
+              {fechada ? "Etapa fechada" : "Fechar etapa"}
+            </DropdownMenuItem>
 
             <DropdownMenuSeparator />
 
@@ -315,7 +313,11 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, moven
         open={confirmFechar}
         onOpenChange={setConfirmFechar}
         title="Fechar esta etapa?"
-        description={`Ao fechar "${etapa.nome}", a vaga deixa de receber novas candidaturas e todos os candidatos que não avançaram vão receber uma notificação automática via WhatsApp avisando que não foram selecionados — você perde a chance de avançar quem ficou pra trás aqui. Essa ação não pode ser desfeita.`}
+        description={`Ao fechar "${etapa.nome}", ${
+          ehUltimaEtapa ? "quem foi marcado como \"avançou\" é avisado que foi aprovado no processo" : "quem foi marcado como \"avançou\" passa para a próxima etapa e é avisado"
+        }, e todos os candidatos que ainda estão sem decisão são rejeitados e avisados pelo WhatsApp.${
+          ehPrimeiraEtapa ? " A vaga também deixa de receber novas candidaturas." : ""
+        } Essa ação não pode ser desfeita.`}
         onConfirm={handleFecharEtapa}
         confirmLabel={fechando ? "Fechando..." : "Fechar etapa"}
         confirmClassName="bg-amber-600 hover:bg-amber-700 text-white"

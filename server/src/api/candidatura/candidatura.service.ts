@@ -94,7 +94,7 @@ export class CandidaturaService {
   }
 
   async minhas(candidatoId: number) {
-    return this.prisma.candidatoEtapa.findMany({
+    const candidaturas = await this.prisma.candidatoEtapa.findMany({
       where: { candidatoId },
       include: {
         etapa: {
@@ -114,6 +114,21 @@ export class CandidaturaService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    // O "avançou" só chega ao candidato quando a etapa fecha e o WhatsApp
+    // sai. Até lá ele continua vendo "em análise", senão o app contaria antes
+    // da mensagem. (Rejeitado já sai com resultadoNotificado = true.)
+    return candidaturas.map((c) =>
+      c.resultadoNotificado || c.etapa.status !== 'aberta'
+        ? c
+        : {
+            ...c,
+            statusCandidato: false,
+            rejeitado: false,
+            motivoRejeicao: null,
+            escolhido: false,
+          },
+    );
   }
 
   async porVaga(vagaId: number, empresaId: number) {
@@ -195,6 +210,20 @@ export class CandidaturaService {
       throw new ConflictException('Sem permissão');
     }
 
+    // Etapa fechada = resultado já foi mandado por WhatsApp pra todo mundo
+    // dela (ver fecharEtapa() em vaga.service.ts); mudar a decisão agora
+    // deixaria o sistema dizendo uma coisa e a mensagem outra.
+    const mudaDecisao =
+      dto.etapaId !== undefined ||
+      dto.statusCandidato !== undefined ||
+      dto.rejeitado !== undefined ||
+      dto.escolhido !== undefined;
+    if (mudaDecisao && candidatura.etapa.status !== 'aberta') {
+      throw new ConflictException(
+        'Esta etapa já foi fechada e os candidatos já foram avisados do resultado',
+      );
+    }
+
     if (dto.etapaId !== undefined) {
       const novaEtapa = await this.prisma.etapaProcessoSeletivo.findUnique({
         where: { id: dto.etapaId },
@@ -213,8 +242,6 @@ export class CandidaturaService {
       }
     }
 
-    const etapaAnterior = candidatura.etapa;
-
     const atualizada = await this.prisma.candidatoEtapa.update({
       where: { id },
       data: {
@@ -227,7 +254,8 @@ export class CandidaturaService {
           rejeitado: dto.rejeitado,
           // rejeitar um candidato desfaz um eventual "avançou" anterior —
           // os dois estados não fazem sentido juntos
-          ...(dto.rejeitado && { statusCandidato: false }),
+          // rejeitado é avisado na hora (logo abaixo)
+          ...(dto.rejeitado && { statusCandidato: false, resultadoNotificado: true }),
         }),
         ...(dto.motivoRejeicao !== undefined && {
           motivoRejeicao: dto.motivoRejeicao,
@@ -249,21 +277,16 @@ export class CandidaturaService {
       },
     });
 
-    if (dto.rejeitado) {
+    // Rejeição é avisada na hora. Já o "avançou" só é avisado quando a
+    // empresa fecha a etapa (ver fecharEtapa() em vaga.service.ts), que é
+    // quando o candidato passa de fato pra próxima.
+    if (dto.rejeitado && !candidatura.rejeitado) {
       void this.notification.candidaturaRecusada({
         candidato: atualizada.candidato,
         empresa: atualizada.etapa.vaga.empresa,
         vaga: atualizada.etapa.vaga,
         etapa: atualizada.etapa,
         motivoRejeicao: atualizada.motivoRejeicao,
-      });
-    } else if (dto.etapaId !== undefined && dto.etapaId !== etapaAnterior.id) {
-      void this.notification.avancouEtapa({
-        candidato: atualizada.candidato,
-        empresa: atualizada.etapa.vaga.empresa,
-        vaga: atualizada.etapa.vaga,
-        etapaAnterior,
-        etapa: atualizada.etapa,
       });
     }
 
