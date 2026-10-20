@@ -155,7 +155,11 @@ export default function MainCompanyVagas() {
         ) : (
           <div className="flex flex-col gap-6 pb-8">
             {vagasExibidas.map((vaga) => (
-              <VagaVagas key={vaga.id} vaga={vaga} />
+              <VagaVagas
+                key={vaga.id}
+                vaga={vaga}
+                onExcluida={(id) => setVagas((prev) => prev.filter((v) => v.id !== id))}
+              />
             ))}
           </div>
         )}

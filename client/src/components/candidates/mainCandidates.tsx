@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { ArrowLeft, Users, Loader2, Mail, Phone, Check, X, FileText, UserX, Award } from "lucide-react";
+import { ArrowLeft, Users, Loader2, Mail, Phone, Check, X, FileText, UserX, Award, EllipsisVertical } from "lucide-react";
 import { toast } from "sonner";
 import { getVagaById, Vaga } from "@/services/vaga";
 import {
@@ -18,6 +18,13 @@ import {
   AlertDialogDescription,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const MENSAGEM_PADRAO_REJEICAO =
   "Agradecemos seu interesse nesta vaga. Após avaliação do seu perfil, optamos por seguir com outros candidatos neste processo seletivo.";
@@ -88,19 +95,22 @@ export default function MainCandidates() {
     }
   };
 
-  // Só marca: o candidato continua nesta etapa até ela ser fechada, e aí
-  // passa pra próxima e recebe o aviso por WhatsApp (fecharEtapa no backend).
+  // Avançar move o candidato na hora (e avisa por WhatsApp na hora) — não
+  // espera mais a empresa fechar a etapa inteira.
   const handleAvancarEtapa = async (candidatura: Candidatura) => {
     const proximaEtapa = getProximaEtapa(candidatura.etapaId);
     setAtualizandoId(candidatura.id);
     try {
-      const atualizada = await moverCandidatura(candidatura.id, { statusCandidato: true });
-      setCandidatos((prev) => prev.map((c) => (c.id === candidatura.id ? atualizada : c)));
-      toast.success(
-        proximaEtapa
-          ? `Candidato vai para "${proximaEtapa.nome}" quando esta etapa for fechada`
-          : "Candidato aprovado — ele será avisado quando esta etapa for fechada",
-      );
+      if (proximaEtapa) {
+        await moverCandidatura(candidatura.id, { etapaId: proximaEtapa.id, statusCandidato: false });
+        // a candidatura saiu da etapa que está sendo vista aqui — remove da lista atual
+        setCandidatos((prev) => prev.filter((c) => c.id !== candidatura.id));
+        toast.success(`Candidato movido para a etapa "${proximaEtapa.nome}" e avisado pelo WhatsApp`);
+      } else {
+        const atualizada = await moverCandidatura(candidatura.id, { statusCandidato: true });
+        setCandidatos((prev) => prev.map((c) => (c.id === candidatura.id ? atualizada : c)));
+        toast.success("Candidato aprovado e avisado pelo WhatsApp — esta é a última etapa do processo");
+      }
     } catch (e: any) {
       toast.error(e.message || "Erro ao avançar candidato");
     } finally {
@@ -108,14 +118,14 @@ export default function MainCandidates() {
     }
   };
 
-  const handleEscolher = async (candidatura: Candidatura) => {
+  const handleSelecionar = async (candidatura: Candidatura) => {
     setAtualizandoId(candidatura.id);
     try {
-      const atualizada = await moverCandidatura(candidatura.id, { escolhido: !candidatura.escolhido });
+      const atualizada = await moverCandidatura(candidatura.id, { selecionado: !candidatura.selecionado });
       setCandidatos((prev) => prev.map((c) => (c.id === candidatura.id ? atualizada : c)));
-      toast.success(atualizada.escolhido ? "Candidato marcado como escolhido" : "Escolha desfeita");
+      toast.success(atualizada.selecionado ? "Candidato marcado como selecionado e avisado pelo WhatsApp" : "Seleção desfeita");
     } catch (e: any) {
-      toast.error(e.message || "Erro ao marcar candidato como escolhido");
+      toast.error(e.message || "Erro ao marcar candidato como selecionado");
     } finally {
       setAtualizandoId(null);
     }
@@ -230,7 +240,7 @@ export default function MainCandidates() {
                     className={`text-sm px-3 py-1 rounded-full flex-shrink-0 ${
                       candidatura.rejeitado
                         ? "bg-red-100 text-red-700"
-                        : candidatura.escolhido
+                        : candidatura.selecionado
                         ? "bg-amber-100 text-amber-800"
                         : candidatura.statusCandidato
                         ? "bg-green-100 text-green-700"
@@ -239,8 +249,8 @@ export default function MainCandidates() {
                   >
                     {candidatura.rejeitado
                       ? "Rejeitado"
-                      : candidatura.escolhido
-                      ? "Escolhido"
+                      : candidatura.selecionado
+                      ? "Selecionado"
                       : candidatura.statusCandidato
                       ? "Avançou"
                       : "Em análise"}
@@ -253,65 +263,72 @@ export default function MainCandidates() {
                   </p>
                 )}
 
-                <div className="flex gap-3 justify-end mt-5">
-                  <button
-                    onClick={() => navigate(`/candidatos/curriculo/${candidatura.candidatoId}?${searchParams.toString()}`)}
-                    className="flex items-center gap-2 text-sm text-deepGreen px-4 py-2 rounded-xl border border-deepGreen/30 hover:bg-paleGreen/40 transition-colors duration-200 mr-auto"
-                  >
-                    <FileText size={16} aria-hidden="true" />
-                    Ver currículo
-                  </button>
-                  <button
-                    onClick={() => handleAtualizarStatus(candidatura.id, false)}
-                    disabled={atualizandoId === candidatura.id || candidatura.rejeitado || !candidatura.statusCandidato || etapaFechada(candidatura.etapaId)}
-                    className="flex items-center gap-2 text-sm text-gray-600 px-4 py-2 rounded-xl border border-gray-200 hover:border-red-300 hover:text-red-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <X size={16} aria-hidden="true" />
-                    Desfazer avanço
-                  </button>
+                <div className="flex items-center gap-2 justify-end mt-5">
                   <button
                     onClick={() => handleAvancarEtapa(candidatura)}
                     disabled={atualizandoId === candidatura.id || candidatura.rejeitado || candidatura.statusCandidato || etapaFechada(candidatura.etapaId)}
-                    className="flex items-center gap-2 text-sm text-white bg-deepGreen px-4 py-2 rounded-xl hover:bg-mediumGreen transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 text-sm text-white bg-deepGreen px-5 py-2.5 rounded-xl hover:bg-mediumGreen transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                   >
                     {atualizandoId === candidatura.id ? (
                       <Loader2 size={16} className="animate-spin" aria-hidden="true" />
                     ) : (
                       <Check size={16} aria-hidden="true" />
                     )}
-                    Avançou
+                    {getProximaEtapa(candidatura.etapaId) ? "Avançar etapa" : "Avançou"}
                   </button>
-                  {!getProximaEtapa(candidatura.etapaId) && !candidatura.rejeitado && (
-                    <button
-                      onClick={() => handleEscolher(candidatura)}
-                      disabled={atualizandoId === candidatura.id || etapaFechada(candidatura.etapaId)}
-                      title={
-                        candidatura.escolhido
-                          ? "Desfazer escolha"
-                          : "Marcar este candidato como o escolhido pra vaga"
-                      }
-                      className={`flex items-center gap-2 text-sm px-4 py-2 rounded-xl border transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-                        candidatura.escolhido
-                          ? "bg-amber-500 text-white border-amber-500 hover:bg-amber-600"
-                          : "text-amber-700 border-amber-300 hover:bg-amber-50"
-                      }`}
-                    >
-                      {atualizandoId === candidatura.id ? (
-                        <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-                      ) : (
-                        <Award size={16} aria-hidden="true" />
+
+                  {/* modal={false}: com o menu modal, o Radix trava o body (pointer-events:none)
+                      e, ao abrir a confirmação a partir de um item, restaura esse bloqueio
+                      de forma errada — a página ficava sem clique depois de cancelar. */}
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Mais opções do candidato"
+                        className="flex items-center justify-center p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:border-deepGreen hover:text-deepGreen transition-colors duration-200"
+                      >
+                        <EllipsisVertical size={18} aria-hidden="true" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="font-SecondFont min-w-52">
+                      <DropdownMenuItem
+                        onSelect={() => navigate(`/candidatos/curriculo/${candidatura.candidatoId}?${searchParams.toString()}`)}
+                      >
+                        <FileText size={14} aria-hidden="true" />
+                        Ver currículo
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onSelect={() => handleAtualizarStatus(candidatura.id, false)}
+                        disabled={atualizandoId === candidatura.id || candidatura.rejeitado || !candidatura.statusCandidato || etapaFechada(candidatura.etapaId)}
+                      >
+                        <X size={14} aria-hidden="true" />
+                        Desfazer avanço
+                      </DropdownMenuItem>
+
+                      {!getProximaEtapa(candidatura.etapaId) && !candidatura.rejeitado && (
+                        <DropdownMenuItem
+                          onSelect={() => handleSelecionar(candidatura)}
+                          disabled={atualizandoId === candidatura.id || etapaFechada(candidatura.etapaId)}
+                          className="text-amber-700 focus:text-amber-700"
+                        >
+                          <Award size={14} aria-hidden="true" />
+                          {candidatura.selecionado ? "Desfazer seleção" : "Marcar como selecionado"}
+                        </DropdownMenuItem>
                       )}
-                      {candidatura.escolhido ? "Escolhido" : "Marcar como escolhido"}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleAbrirRejeitar(candidatura)}
-                    disabled={atualizandoId === candidatura.id || candidatura.rejeitado || etapaFechada(candidatura.etapaId)}
-                    className="flex items-center gap-2 text-sm text-white bg-red-600 px-4 py-2 rounded-xl hover:bg-red-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <UserX size={16} aria-hidden="true" />
-                    {candidatura.rejeitado ? "Rejeitado" : "Rejeitar candidato"}
-                  </button>
+
+                      <DropdownMenuSeparator />
+
+                      <DropdownMenuItem
+                        onSelect={() => handleAbrirRejeitar(candidatura)}
+                        disabled={atualizandoId === candidatura.id || candidatura.rejeitado || etapaFechada(candidatura.etapaId)}
+                        className="text-red-600 focus:text-red-600"
+                      >
+                        <UserX size={14} aria-hidden="true" />
+                        {candidatura.rejeitado ? "Rejeitado" : "Rejeitar candidato"}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             ))}

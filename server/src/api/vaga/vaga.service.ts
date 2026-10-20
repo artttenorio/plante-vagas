@@ -126,6 +126,7 @@ export class VagaService {
 
     const where: Prisma.VagaWhereInput = {
       status: 'aberta',
+      deletedAt: null,
       ...(query.area && { area: query.area }),
       ...(query.modalidade && { modalidade: query.modalidade }),
       ...(query.regiao && { empresa: { Address: { city: query.regiao } } }),
@@ -179,7 +180,7 @@ export class VagaService {
 
   async regioesComVagaAberta() {
     const vagas = await this.prisma.vaga.findMany({
-      where: { status: 'aberta' },
+      where: { status: 'aberta', deletedAt: null },
       select: { empresa: { select: { Address: { select: { city: true } } } } },
     });
     const cidades = new Set(
@@ -190,11 +191,13 @@ export class VagaService {
 
   async findByEmpresa(empresaId: number) {
     const vagas = await this.prisma.vaga.findMany({
-      where: { empresaId },
+      // soft delete: vaga excluída some da lista da empresa, mas continua
+      // no banco (candidaturas antigas preservadas) — ver remove() abaixo
+      where: { empresaId, deletedAt: null },
       include: {
         beneficios: true,
         requisitos: true,
-        etapas: this.ETAPAS_COM_ESCOLHIDO_INCLUDE,
+        etapas: this.ETAPAS_COM_SELECIONADO_INCLUDE,
         processoSeletivo: true,
         empresa: {
           select: {
@@ -209,16 +212,19 @@ export class VagaService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return vagas.map((vaga) => this.comTemCandidatoEscolhido(vaga));
+    return vagas.map((vaga) => this.comTemCandidatoSelecionado(vaga));
   }
 
   async findOne(id: number) {
+    // Sem filtro de deletedAt aqui de propósito: quem já tem o id (uma
+    // candidatura antiga, um link salvo) continua acessando a vaga depois
+    // de excluída — só sai das listagens (findAll/findByEmpresa acima).
     const vaga = await this.prisma.vaga.findUnique({
       where: { id },
       include: {
         beneficios: true,
         requisitos: true,
-        etapas: this.ETAPAS_COM_ESCOLHIDO_INCLUDE,
+        etapas: this.ETAPAS_COM_SELECIONADO_INCLUDE,
         processoSeletivo: true,
         empresa: {
           select: {
@@ -234,41 +240,41 @@ export class VagaService {
 
     if (!vaga) throw new ConflictException('Vaga não encontrada');
 
-    return this.comTemCandidatoEscolhido(vaga);
+    return this.comTemCandidatoSelecionado(vaga);
   }
 
   // Traz, pra cada etapa, só o suficiente pra saber se ela tem algum
-  // candidato escolhido — usado por comTemCandidatoEscolhido() logo abaixo.
-  // Nenhum dado pessoal de candidato trafega aqui.
-  private readonly ETAPAS_COM_ESCOLHIDO_INCLUDE = {
+  // candidato selecionado — usado por comTemCandidatoSelecionado() logo
+  // abaixo. Nenhum dado pessoal de candidato trafega aqui.
+  private readonly ETAPAS_COM_SELECIONADO_INCLUDE = {
     orderBy: { ordem: 'asc' as const },
     include: {
-      candidatoEtapas: { where: { escolhido: true }, select: { id: true } },
+      candidatoEtapas: { where: { selecionado: true }, select: { id: true } },
     },
   };
 
   /**
-   * `temCandidatoEscolhido`: se alguma etapa da vaga já tem um candidato
-   * marcado como escolhido. Usado pelo front pra decidir se avisa a
-   * empresa antes de finalizar uma vaga sem ninguém escolhido ainda.
+   * `temCandidatoSelecionado`: se alguma etapa da vaga já tem um candidato
+   * marcado como selecionado. Usado pelo front pra decidir se avisa a
+   * empresa antes de finalizar uma vaga sem ninguém selecionado ainda.
    */
-  private comTemCandidatoEscolhido<
+  private comTemCandidatoSelecionado<
     T extends { etapas: { candidatoEtapas: { id: number }[] }[] },
   >(vaga: T) {
-    const temCandidatoEscolhido = vaga.etapas.some(
+    const temCandidatoSelecionado = vaga.etapas.some(
       (etapa) => etapa.candidatoEtapas.length > 0,
     );
     return {
       ...vaga,
       etapas: vaga.etapas.map(({ candidatoEtapas, ...etapa }) => etapa),
-      temCandidatoEscolhido,
+      temCandidatoSelecionado,
     };
   }
 
   async update(id: number, updateVagaDto: UpdateVagaDto, empresaId: number) {
     const vaga = await this.prisma.vaga.findUnique({ where: { id } });
 
-    if (!vaga) throw new ConflictException('Vaga não encontrada');
+    if (!vaga || vaga.deletedAt) throw new ConflictException('Vaga não encontrada');
     if (vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão para editar esta vaga');
 
     const { beneficios, requisitos, etapas, processoSeletivo, ...vagaData } = updateVagaDto;
@@ -323,7 +329,7 @@ export class VagaService {
       include: { beneficios: true, requisitos: true, etapas: { orderBy: { ordem: 'asc' } } },
     });
 
-    if (!vaga) throw new ConflictException('Vaga não encontrada');
+    if (!vaga || vaga.deletedAt) throw new ConflictException('Vaga não encontrada');
     if (vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão');
 
     return this.prisma.vaga.create({
@@ -354,7 +360,7 @@ export class VagaService {
 
   /**
    * Finalizar uma vaga rejeita de verdade todo candidato que não foi
-   * escolhido (fica marcado `rejeitado`, com notificação por WhatsApp) —
+   * selecionado (fica marcado `rejeitado`, com notificação por WhatsApp) —
    * antes só mudava `vaga.status`, sem mexer nas candidaturas, então um
    * candidato "Em análise" continuava aparecendo assim pra ele mesmo
    * depois da vaga fechada (`estaEncerrado()` no front do candidato só
@@ -363,7 +369,7 @@ export class VagaService {
    * pra buscar candidato novo, não pra voltar a mexer em quem já foi
    * dispensado aqui.
    *
-   * Escolhido que ainda não recebeu a aprovação (última etapa não foi
+   * Selecionado que ainda não recebeu a aprovação (última etapa não foi
    * fechada) é avisado aqui.
    */
   async finalizar(id: number, empresaId: number) {
@@ -382,24 +388,24 @@ export class VagaService {
       },
     });
 
-    if (!vaga) throw new ConflictException('Vaga não encontrada');
+    if (!vaga || vaga.deletedAt) throw new ConflictException('Vaga não encontrada');
     if (vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão');
 
-    const algumEscolhido = await this.prisma.candidatoEtapa.findFirst({
-      where: { escolhido: true, etapa: { vagaId: id } },
+    const algumSelecionado = await this.prisma.candidatoEtapa.findFirst({
+      where: { selecionado: true, etapa: { vagaId: id } },
       select: { id: true },
     });
-    const motivoRejeicao = algumEscolhido
+    const motivoRejeicao = algumSelecionado
       ? 'Processo seletivo encerrado — a vaga foi preenchida com outro candidato.'
       : 'Processo seletivo encerrado pela empresa.';
 
     const candidaturas = vaga.etapas.flatMap((e) =>
       e.candidatoEtapas.map((c) => ({ ...c, etapaNome: e.nome, etapaId: e.id })),
     );
-    // escolhido que já recebeu a aprovação no fechamento da última etapa
+    // selecionado que já recebeu a aprovação no fechamento da última etapa
     // não precisa ser avisado de novo
-    const escolhidos = candidaturas.filter((c) => c.escolhido && !c.resultadoNotificado);
-    const candidaturasParaRejeitar = candidaturas.filter((c) => !c.escolhido);
+    const selecionados = candidaturas.filter((c) => c.selecionado && !c.resultadoNotificado);
+    const candidaturasParaRejeitar = candidaturas.filter((c) => !c.selecionado);
 
     const [atualizada] = await this.prisma.$transaction([
       this.prisma.vaga.update({ where: { id }, data: { status: 'fechada' } }),
@@ -408,7 +414,7 @@ export class VagaService {
         data: { rejeitado: true, statusCandidato: false, motivoRejeicao, resultadoNotificado: true },
       }),
       this.prisma.candidatoEtapa.updateMany({
-        where: { id: { in: escolhidos.map((c) => c.id) } },
+        where: { id: { in: selecionados.map((c) => c.id) } },
         data: { resultadoNotificado: true },
       }),
     ]);
@@ -423,13 +429,13 @@ export class VagaService {
         motivoRejeicao,
       });
     }
-    for (const candidatura of escolhidos) {
+    for (const candidatura of selecionados) {
       void this.notification.aprovadoProcesso({
         candidato: candidatura.candidato,
         empresa: vaga.empresa,
         vaga: vagaPayload,
         etapa: { id: candidatura.etapaId, nome: candidatura.etapaNome },
-        escolhido: true,
+        selecionado: true,
       });
     }
 
@@ -439,7 +445,7 @@ export class VagaService {
   async reabrir(id: number, empresaId: number) {
     const vaga = await this.prisma.vaga.findUnique({ where: { id } });
 
-    if (!vaga) throw new ConflictException('Vaga não encontrada');
+    if (!vaga || vaga.deletedAt) throw new ConflictException('Vaga não encontrada');
     if (vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão');
 
     return this.prisma.vaga.update({ where: { id }, data: { status: 'aberta' } });
@@ -448,7 +454,7 @@ export class VagaService {
   async upsertProcessoSeletivo(vagaId: number, dto: ProcessoSeletivoDto, empresaId: number) {
     const vaga = await this.prisma.vaga.findUnique({ where: { id: vagaId } });
 
-    if (!vaga) throw new ConflictException('Vaga não encontrada');
+    if (!vaga || vaga.deletedAt) throw new ConflictException('Vaga não encontrada');
     if (vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão');
 
     const atual = await this.prisma.processoSeletivo.findUnique({
@@ -488,7 +494,7 @@ export class VagaService {
   async reordenarEtapas(vagaId: number, etapaIds: number[], empresaId: number) {
     const vaga = await this.prisma.vaga.findUnique({ where: { id: vagaId } });
 
-    if (!vaga) throw new ConflictException('Vaga não encontrada');
+    if (!vaga || vaga.deletedAt) throw new ConflictException('Vaga não encontrada');
     if (vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão');
 
     return this.prisma.$transaction(
@@ -585,6 +591,10 @@ export class VagaService {
       });
     }
     for (const c of aprovados) {
+      // Quem já foi avançado/aprovado individualmente (via mover() em
+      // candidatura.service.ts) já recebeu o aviso por WhatsApp na hora —
+      // mandar de novo aqui duplicaria a mensagem.
+      if (c.resultadoNotificado) continue;
       if (proximaEtapa) {
         void this.notification.avancouEtapa({
           candidato: c.candidato,
@@ -599,7 +609,7 @@ export class VagaService {
           empresa,
           vaga,
           etapa: etapaFechada,
-          escolhido: c.escolhido,
+          selecionado: c.selecionado,
         });
       }
     }
@@ -635,7 +645,7 @@ export class VagaService {
   ) {
     const vaga = await this.prisma.vaga.findUnique({ where: { id: vagaId } });
 
-    if (!vaga) throw new ConflictException('Vaga não encontrada');
+    if (!vaga || vaga.deletedAt) throw new ConflictException('Vaga não encontrada');
     if (vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão');
 
     const totalEtapas = await this.prisma.etapaProcessoSeletivo.count({ where: { vagaId } });
@@ -651,12 +661,19 @@ export class VagaService {
     });
   }
 
+  /**
+   * Soft delete: marca `deletedAt` em vez de apagar a linha. A vaga some
+   * das listagens (findAll, findByEmpresa) mas continua no banco — as
+   * candidaturas recebidas não se perdem, e quem já tinha a candidatura
+   * ainda consegue ver os detalhes dela (findOne não filtra deletedAt).
+   */
   async remove(id: number, empresaId: number) {
     const vaga = await this.prisma.vaga.findUnique({ where: { id } });
 
     if (!vaga) throw new ConflictException('Vaga não encontrada');
     if (vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão para excluir esta vaga');
+    if (vaga.deletedAt) throw new ConflictException('Vaga já foi excluída');
 
-    return this.prisma.vaga.delete({ where: { id } });
+    return this.prisma.vaga.update({ where: { id }, data: { deletedAt: new Date() } });
   }
 }
