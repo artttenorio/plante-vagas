@@ -10,7 +10,7 @@ export interface Candidatura {
   observacoes?: string;
   rejeitado: boolean;
   motivoRejeicao?: string;
-  escolhido: boolean;
+  selecionado: boolean;
   origem: string;
   candidatoId: number;
   etapaId: number;
@@ -37,7 +37,7 @@ export interface MoveCandidaturaPayload {
   observacoes?: string;
   rejeitado?: boolean;
   motivoRejeicao?: string;
-  escolhido?: boolean;
+  selecionado?: boolean;
 }
 
 async function handle<T>(response: Response): Promise<T> {

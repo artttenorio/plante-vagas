@@ -23,5 +23,5 @@ export class MoveCandidaturaDto {
 
   @IsOptional()
   @IsBoolean()
-  escolhido?: boolean;
+  selecionado?: boolean;
 }

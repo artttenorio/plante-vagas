@@ -38,7 +38,7 @@ export class CandidaturaService {
       // qualquer reordenação.
       include: { etapas: { orderBy: { ordem: 'asc' }, take: 1 } },
     });
-    if (!vaga) throw new NotFoundException('Vaga não encontrada');
+    if (!vaga || vaga.deletedAt) throw new NotFoundException('Vaga não encontrada');
     if (vaga.status === 'fechada') {
       throw new ConflictException('Vaga fechada para novas candidaturas');
     }
@@ -126,7 +126,7 @@ export class CandidaturaService {
             statusCandidato: false,
             rejeitado: false,
             motivoRejeicao: null,
-            escolhido: false,
+            selecionado: false,
           },
     );
   }
@@ -197,7 +197,7 @@ export class CandidaturaService {
               include: {
                 empresa: { select: EMPRESA_SELECT },
                 // só pra descobrir qual é a última etapa da vaga, na
-                // checagem de "escolhido" logo abaixo
+                // checagem de "selecionado" logo abaixo
                 etapas: { orderBy: { ordem: 'desc' }, take: 1 },
               },
             },
@@ -217,7 +217,7 @@ export class CandidaturaService {
       dto.etapaId !== undefined ||
       dto.statusCandidato !== undefined ||
       dto.rejeitado !== undefined ||
-      dto.escolhido !== undefined;
+      dto.selecionado !== undefined;
     if (mudaDecisao && candidatura.etapa.status !== 'aberta') {
       throw new ConflictException(
         'Esta etapa já foi fechada e os candidatos já foram avisados do resultado',
@@ -233,14 +233,41 @@ export class CandidaturaService {
       }
     }
 
-    if (dto.escolhido) {
+    if (dto.selecionado) {
       const ultimaEtapa = candidatura.etapa.vaga.etapas[0];
       if (ultimaEtapa?.id !== candidatura.etapaId) {
         throw new ConflictException(
-          'Só é possível marcar um candidato como escolhido na última etapa do processo',
+          'Só é possível marcar um candidato como selecionado na última etapa do processo',
         );
       }
     }
+
+    // Pedido do time: avançar etapa é na hora de novo, não espera a empresa
+    // fechar a etapa inteira (como passou a ser num PR recente). Isso cobre
+    // dois casos — mudar de etapa de verdade, e ser aprovado por ficar
+    // "avançou" já na última etapa — cada um avisado por um evento diferente
+    // logo abaixo.
+    const etapaAnterior = candidatura.etapa;
+    const etapaMudou = dto.etapaId !== undefined && dto.etapaId !== candidatura.etapaId;
+    const ultimaEtapaDaVaga = candidatura.etapa.vaga.etapas[0];
+    // Comparado ANTES x DEPOIS da escrita (não só o campo que veio no body),
+    // porque "selecionado" sozinho (sem mandar statusCandidato) também marca
+    // statusCandidato=true por tabela — clicar direto em "Marcar como
+    // selecionado" sem ter clicado "Avançar etapa" antes precisa avisar do
+    // mesmo jeito.
+    const estavaAprovado = candidatura.statusCandidato;
+    const vaiFicarAprovado =
+      dto.statusCandidato ?? (dto.selecionado ? true : candidatura.statusCandidato);
+    const aprovadoAgora =
+      !etapaMudou &&
+      ultimaEtapaDaVaga?.id === candidatura.etapaId &&
+      !estavaAprovado &&
+      vaiFicarAprovado;
+    // Marcar como selecionado depois de já ter sido aprovado (ex: "Avançar
+    // etapa" primeiro, "Marcar como selecionado" depois) não cai no
+    // aprovadoAgora acima (já estava aprovado) — mas é uma notícia nova pro
+    // candidato, que precisa ser avisado mesmo assim.
+    const selecionadoAgora = dto.selecionado === true && !candidatura.selecionado;
 
     const atualizada = await this.prisma.candidatoEtapa.update({
       where: { id },
@@ -260,12 +287,16 @@ export class CandidaturaService {
         ...(dto.motivoRejeicao !== undefined && {
           motivoRejeicao: dto.motivoRejeicao,
         }),
-        ...(dto.escolhido !== undefined && {
-          escolhido: dto.escolhido,
-          // escolher implica ter avançado; desmarcar não mexe no avançou,
+        ...(dto.selecionado !== undefined && {
+          selecionado: dto.selecionado,
+          // selecionar implica ter avançado; desmarcar não mexe no avançou,
           // já que o candidato continua tendo passado por essa etapa
-          ...(dto.escolhido && { statusCandidato: true }),
+          ...(dto.selecionado && { statusCandidato: true }),
         }),
+        // avançar de etapa, ser aprovado na última ou ser selecionado já avisa
+        // na hora (logo abaixo), então o resultado não fica pendente de
+        // "fechar etapa" nem é avisado de novo lá
+        ...((etapaMudou || aprovadoAgora || selecionadoAgora) && { resultadoNotificado: true }),
       },
       include: {
         etapa: {
@@ -277,9 +308,6 @@ export class CandidaturaService {
       },
     });
 
-    // Rejeição é avisada na hora. Já o "avançou" só é avisado quando a
-    // empresa fecha a etapa (ver fecharEtapa() em vaga.service.ts), que é
-    // quando o candidato passa de fato pra próxima.
     if (dto.rejeitado && !candidatura.rejeitado) {
       void this.notification.candidaturaRecusada({
         candidato: atualizada.candidato,
@@ -287,6 +315,22 @@ export class CandidaturaService {
         vaga: atualizada.etapa.vaga,
         etapa: atualizada.etapa,
         motivoRejeicao: atualizada.motivoRejeicao,
+      });
+    } else if (etapaMudou) {
+      void this.notification.avancouEtapa({
+        candidato: atualizada.candidato,
+        empresa: atualizada.etapa.vaga.empresa,
+        vaga: atualizada.etapa.vaga,
+        etapaAnterior,
+        etapa: atualizada.etapa,
+      });
+    } else if (aprovadoAgora || selecionadoAgora) {
+      void this.notification.aprovadoProcesso({
+        candidato: atualizada.candidato,
+        empresa: atualizada.etapa.vaga.empresa,
+        vaga: atualizada.etapa.vaga,
+        etapa: atualizada.etapa,
+        selecionado: atualizada.selecionado,
       });
     }
 

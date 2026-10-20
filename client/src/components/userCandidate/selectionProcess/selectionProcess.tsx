@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClipboardList, Loader2, Building2, X, CheckCircle2 } from "lucide-react";
+import { ClipboardList, Loader2, Building2, X, CheckCircle2, Calendar, Clock, Info } from "lucide-react";
 import { toast } from "sonner";
 import { getMinhasCandidaturas, cancelarCandidatura, type Candidatura } from "@/services/candidatura";
 import EtapasProgresso from "./etapasProgresso";
@@ -128,24 +128,34 @@ export default function SelectionProcess() {
 
               const statusLabel = candidatura.rejeitado
                 ? "Não selecionado(a)"
-                : candidatura.statusCandidato
-                  ? "Avançou"
-                  : "Em análise";
+                : candidatura.selecionado
+                  ? "Selecionado(a)"
+                  : candidatura.statusCandidato
+                    ? "Avançou"
+                    : "Em análise";
               const statusColor = candidatura.rejeitado
                 ? "text-red-600"
-                : candidatura.statusCandidato
-                  ? "text-mediumGreen"
-                  : "text-gray-500";
+                : candidatura.selecionado
+                  ? "text-amber-700"
+                  : candidatura.statusCandidato
+                    ? "text-mediumGreen"
+                    : "text-gray-500";
               const statusDot = candidatura.rejeitado
                 ? "bg-red-500"
-                : candidatura.statusCandidato
-                  ? "bg-mediumGreen"
-                  : "bg-gray-400";
+                : candidatura.selecionado
+                  ? "bg-amber-500"
+                  : candidatura.statusCandidato
+                    ? "bg-mediumGreen"
+                    : "bg-gray-400";
 
               return (
                 <div
                   key={candidatura.id}
-                  className="bg-white rounded-xl border border-gray-200 p-6 font-SecondFont cursor-pointer hover:border-deepGreen/40 transition-colors duration-200"
+                  className={`rounded-xl border p-6 font-SecondFont cursor-pointer transition-colors duration-200 ${
+                    candidatura.selecionado && !candidatura.rejeitado
+                      ? "bg-amber-50/40 border-amber-200 hover:border-amber-300"
+                      : "bg-white border-gray-200 hover:border-deepGreen/40"
+                  }`}
                   onClick={() => vaga && navigate(`/pagina-vaga/${vaga.id}`)}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -172,6 +182,49 @@ export default function SelectionProcess() {
                       {statusLabel}
                     </span>
                   </div>
+
+                  {candidatura.selecionado && !candidatura.rejeitado && (
+                    <div className="flex items-center gap-2 bg-amber-100/60 text-amber-800 rounded-lg px-3 py-2 text-sm mt-4">
+                      <CheckCircle2 size={16} className="flex-shrink-0" aria-hidden="true" />
+                      Você foi selecionado(a) nesta etapa! Fique de olho no WhatsApp para os próximos passos.
+                    </div>
+                  )}
+
+                  {estaEncerrado(candidatura) && !candidatura.rejeitado && !candidatura.selecionado && (
+                    <div className="flex items-center gap-2 bg-gray-100 text-gray-600 rounded-lg px-3 py-2 text-sm mt-4">
+                      <Info size={16} className="flex-shrink-0" aria-hidden="true" />
+                      Esse processo seletivo foi encerrado pela empresa.
+                    </div>
+                  )}
+
+                  {vaga?.processoSeletivo && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <span className="text-gray-400 text-xs uppercase tracking-wide">
+                        Processo seletivo
+                      </span>
+                      <p className="text-deepGreen font-semibold mt-0.5">
+                        {vaga.processoSeletivo.nome}
+                      </p>
+                      {vaga.processoSeletivo.descricao && (
+                        <p className="text-gray-600 text-sm mt-1 break-words">
+                          {vaga.processoSeletivo.descricao}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-4 mt-2 text-gray-500 text-xs">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar size={13} aria-hidden="true" />
+                          Início em{" "}
+                          {new Date(vaga.processoSeletivo.dataInicio).toLocaleDateString("pt-BR", {
+                            timeZone: "UTC",
+                          })}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Clock size={13} aria-hidden="true" />
+                          Duração de {vaga.processoSeletivo.duracaoDias} dias
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-100">
                     <div>

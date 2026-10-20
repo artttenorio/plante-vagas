@@ -52,14 +52,17 @@ export interface Vaga {
   requisitos: { id: number; nome: string }[];
   etapas: EtapaProcessoSeletivo[];
   processoSeletivo?: ProcessoSeletivo | null;
-  // Se alguma etapa já tem candidato marcado como "escolhido". Só vem
+  // Se alguma etapa já tem candidato marcado como "selecionado". Só vem
   // preenchido no findByEmpresa/findOne; ausente (undefined) em respostas
   // de create/update/duplicar, onde nunca seria true mesmo.
-  temCandidatoEscolhido?: boolean;
+  temCandidatoSelecionado?: boolean;
   // Só vem preenchido na resposta de finalizarVaga(): quantos candidatos
   // foram rejeitados automaticamente ao fechar (todo mundo que não era o
-  // escolhido).
+  // selecionado).
   candidatosRejeitados?: number;
+  // Soft delete: preenchido quando a vaga foi excluída (continua no banco,
+  // só não aparece mais em findAll/findByEmpresa).
+  deletedAt?: string | null;
   empresaId: number;
   empresa?: {
     id: number;

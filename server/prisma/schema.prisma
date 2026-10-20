@@ -129,6 +129,12 @@ model Vaga {
   // pública tolerante a acento no backend, nunca exibidos pro usuário.
   cargoBusca            String?
   nomeBusca             String?
+  // Soft delete: "excluir vaga" marca esta data em vez de apagar a linha —
+  // mantém candidaturas e histórico no banco. Toda consulta de listagem
+  // (busca pública, lista da empresa) filtra `deletedAt: null`; acesso
+  // direto por id (findOne) continua funcionando pra não quebrar link de
+  // quem já tinha a candidatura.
+  deletedAt             DateTime?
   beneficios            Beneficio[]
   etapas                EtapaProcessoSeletivo[]
   processoSeletivo      ProcessoSeletivo?
@@ -192,7 +198,9 @@ model CandidatoEtapa {
   // Marcado pela empresa na ÚLTIMA etapa do processo — o candidato que
   // ela decidiu contratar. Não é exclusivo: mais de um candidato pode
   // ficar marcado (ex. duas vagas idênticas sendo preenchidas juntas).
-  escolhido       Boolean               @default(false)
+  // Chamado de "selecionado" pro usuário; "escolhido" era o nome antigo
+  // do campo, renomeado (migration add_selecionado_rename).
+  selecionado     Boolean               @default(false)
   // O resultado da etapa atual (avançou / não avançou) só é mandado por
   // WhatsApp quando a empresa fecha a etapa. Marca quem já recebeu, pra
   // finalizar/reabrir a vaga não repetir a mensagem.

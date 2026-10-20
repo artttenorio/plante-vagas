@@ -40,7 +40,7 @@ const VagaProfile = ({ vaga, onExcluida }: { vaga: Vaga; onExcluida?: (id: numbe
         const n = atualizada.candidatosRejeitados ?? 0;
         toast.success(
           n > 0
-            ? `Vaga finalizada. ${n} candidato${n > 1 ? "s" : ""} não escolhido${n > 1 ? "s" : ""} ${n > 1 ? "foram" : "foi"} rejeitado${n > 1 ? "s" : ""} automaticamente.`
+            ? `Vaga finalizada. ${n} candidato${n > 1 ? "s" : ""} não selecionado${n > 1 ? "s" : ""} ${n > 1 ? "foram" : "foi"} rejeitado${n > 1 ? "s" : ""} automaticamente.`
             : "Vaga finalizada."
         );
       }
@@ -54,7 +54,7 @@ const VagaProfile = ({ vaga, onExcluida }: { vaga: Vaga; onExcluida?: (id: numbe
 
   const handleAlternarStatus = () => {
     // Finalizar sempre confirma antes — fechar a vaga rejeita de verdade
-    // todo mundo que não foi escolhido (ver vaga.service.ts.finalizar), e
+    // todo mundo que não foi selecionado (ver vaga.service.ts.finalizar), e
     // reabrir depois não desfaz isso. Reabrir sozinho não precisa avisar
     // de nada.
     if (status === "aberta") {
@@ -199,9 +199,9 @@ const VagaProfile = ({ vaga, onExcluida }: { vaga: Vaga; onExcluida?: (id: numbe
         onOpenChange={setConfirmFinalizar}
         title="Finalizar esta vaga?"
         description={
-          vaga.temCandidatoEscolhido
-            ? `O candidato escolhido continua no processo, mas todo mundo que se candidatou a "${vaga.nome}" e não foi escolhido será rejeitado automaticamente (notificado por WhatsApp). Se reabrir a vaga depois, vai precisar de candidaturas novas — quem foi rejeitado aqui não volta a fazer parte do processo. Deseja continuar?`
-            : `Nenhum candidato foi marcado como escolhido em "${vaga.nome}" ainda. Ao fechar mesmo assim, TODOS os candidatos que se candidataram serão rejeitados automaticamente (notificados por WhatsApp), e reabrir a vaga depois vai exigir candidaturas novas — ninguém volta a fazer parte do processo. Deseja continuar?`
+          vaga.temCandidatoSelecionado
+            ? `O candidato selecionado continua no processo, mas todo mundo que se candidatou a "${vaga.nome}" e não foi selecionado será rejeitado automaticamente (notificado por WhatsApp). Se reabrir a vaga depois, vai precisar de candidaturas novas — quem foi rejeitado aqui não volta a fazer parte do processo. Deseja continuar?`
+            : `Nenhum candidato foi marcado como selecionado em "${vaga.nome}" ainda. Ao fechar mesmo assim, TODOS os candidatos que se candidataram serão rejeitados automaticamente (notificados por WhatsApp), e reabrir a vaga depois vai exigir candidaturas novas — ninguém volta a fazer parte do processo. Deseja continuar?`
         }
         onConfirm={executarFinalizarOuReabrir}
         confirmLabel={alterandoStatus ? "Finalizando..." : "Finalizar vaga"}
