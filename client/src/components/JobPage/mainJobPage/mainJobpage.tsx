@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import JobInformation from "../company-job-infomation/job-information";
 import CompanyInfoPage from "../company-job-infomation/enterprise";
 import type { Vaga } from "@/services/vaga";
-import { candidatarSe } from "@/services/candidatura";
+import { candidatarSe, getMinhasCandidaturas } from "@/services/candidatura";
 import { favoritarVaga, desfavoritarVaga, getMinhasVagasFavoritas } from "@/services/favoritosVaga";
 import { getToken, getUserType, podeUsarAcoesDeCandidato } from "@/services/api";
 
@@ -17,6 +17,7 @@ const MainJobPage = ({ vaga }: { vaga: Vaga }) => {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const savedAlteradoPeloUsuario = useRef(false);
+  const candidatadoAlteradoPeloUsuario = useRef(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("vaga");
   const [candidatando, setCandidatando] = useState(false);
@@ -35,6 +36,19 @@ const MainJobPage = ({ vaga }: { vaga: Vaga }) => {
       .catch(() => {});
   }, [vaga.id]);
 
+  useEffect(() => {
+    // Sem isso, o botão "CANDIDATAR-SE" voltava a aparecer pra quem já
+    // tinha se candidatado assim que a página era recarregada — o estado
+    // `candidatado` só existia em memória, nunca conferido com o servidor.
+    if (getUserType() !== "candidate") return;
+    getMinhasCandidaturas()
+      .then((candidaturas) => {
+        if (candidatadoAlteradoPeloUsuario.current) return;
+        setCandidatado(candidaturas.some((c) => c.etapa?.vaga?.id === vaga.id));
+      })
+      .catch(() => {});
+  }, [vaga.id]);
+
   const handleCandidatar = async () => {
     const token = getToken();
     const userType = getUserType();
@@ -48,6 +62,7 @@ const MainJobPage = ({ vaga }: { vaga: Vaga }) => {
       return;
     }
 
+    candidatadoAlteradoPeloUsuario.current = true;
     setCandidatando(true);
     try {
       await candidatarSe(vaga.id);

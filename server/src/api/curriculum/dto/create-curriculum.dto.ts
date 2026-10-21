@@ -2,14 +2,16 @@ import {
   IsArray,
   IsBoolean,
   IsDateString,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { HasNoDuplicateField, IsNotBlank, IsNotFutureDate, IsOnOrAfterDate } from 'src/common/validators';
 
-class ExperienciaDto {
+export class ExperienciaDto {
   @IsString()
   cargo: string;
 
@@ -20,10 +22,12 @@ class ExperienciaDto {
   descricao: string;
 
   @IsDateString()
+  @IsNotFutureDate()
   inicioData: string;
 
   @IsOptional()
   @IsDateString()
+  @IsOnOrAfterDate('inicioData')
   fimData?: string;
 
   @IsOptional()
@@ -31,7 +35,7 @@ class ExperienciaDto {
   empregoAtual?: boolean;
 }
 
-class FormacaoDto {
+export class FormacaoDto {
   @IsString()
   nivelFormacao: string;
 
@@ -52,21 +56,25 @@ class FormacaoDto {
 
   @IsOptional()
   @IsDateString()
+  @IsOnOrAfterDate('inicioData')
   fimData?: string;
 }
 
-class CertificadoDto {
+export class CertificadoDto {
   @IsString()
+  @IsNotBlank()
   nomeInstituicao: string;
 
   @IsString()
+  @IsNotBlank()
   descricao: string;
 
   @IsString()
+  @IsNotBlank()
   certificate_name: string;
 }
 
-class IdiomaDto {
+export class IdiomaDto {
   @IsString()
   idioma: string;
 
@@ -74,12 +82,16 @@ class IdiomaDto {
   nivel: string;
 }
 
-class DiferencialDto {
+export class DiferencialDto {
   @IsString()
   descricao: string;
+
+  @IsOptional()
+  @IsIn([1, 2])
+  grupo?: number;
 }
 
-class OperacaoAgricolaDto {
+export class OperacaoAgricolaDto {
   @IsString()
   nome: string;
 
@@ -90,7 +102,7 @@ class OperacaoAgricolaDto {
   descricao: string;
 }
 
-class OperacaoPecuariaDto {
+export class OperacaoPecuariaDto {
   @IsString()
   nome: string;
 
@@ -101,7 +113,7 @@ class OperacaoPecuariaDto {
   descricao: string;
 }
 
-class OperacaoFlorestalDto {
+export class OperacaoFlorestalDto {
   @IsString()
   nome: string;
 
@@ -112,7 +124,7 @@ class OperacaoFlorestalDto {
   descricao: string;
 }
 
-class CulturaDto {
+export class CulturaDto {
   @IsString()
   nome: string;
 
@@ -123,7 +135,7 @@ class CulturaDto {
   descricao: string;
 }
 
-class MaquinaDto {
+export class MaquinaDto {
   @IsString()
   nome: string;
 
@@ -134,7 +146,7 @@ class MaquinaDto {
   descricao: string;
 }
 
-class TecnologiaDto {
+export class TecnologiaDto {
   @IsString()
   nome: string;
 
@@ -164,6 +176,53 @@ export class UpdateCurriculumSectionDto {
   data: Record<string, any>[];
 }
 
+/**
+ * O endpoint `PATCH update-section/:section` é o que as telas de currículo
+ * realmente usam (cada seção salva separadamente) — mas o corpo chega como
+ * `data: Record<string, any>[]`, sem tipo, então o ValidationPipe do Nest
+ * nunca aplica os decorators das classes acima (ele só valida quando o tipo
+ * declarado é uma classe conhecida). Esse mapa + validateSectionItems (no
+ * service) fecham esse buraco, validando o array certo pra cada seção.
+ */
+export const CURRICULUM_SECTION_ITEM_DTO: Record<string, new () => object> = {
+  experiencias: ExperienciaDto,
+  formacoes: FormacaoDto,
+  certificados: CertificadoDto,
+  idiomas: IdiomaDto,
+  diferenciais: DiferencialDto,
+  operacoesAgricolas: OperacaoAgricolaDto,
+  operacoesPecuarias: OperacaoPecuariaDto,
+  operacoesFlorestais: OperacaoFlorestalDto,
+  culturas: CulturaDto,
+  maquinas: MaquinaDto,
+  tecnologias: TecnologiaDto,
+};
+
+/** Seções cuja lista não pode ter o campo indicado repetido entre os itens. */
+export const CURRICULUM_SECTION_DEDUPE_FIELD: Record<string, string | undefined> = {
+  idiomas: 'idioma',
+};
+
+/**
+ * Monta, em tempo de execução, uma classe `{ items: ItemDto[] }` com os
+ * decorators certos (array de itens validados + checagem de duplicado,
+ * quando aplicável) — os decorators de propriedade são só funções chamadas
+ * com (prototype, nomeDaPropriedade), então aplicá-los assim funciona igual
+ * a declará-los com `@`.
+ */
+export function createSectionWrapperDto(ItemDto: new () => object, dedupeField?: string) {
+  class SectionWrapperDto {
+    items: object[];
+  }
+  IsArray()(SectionWrapperDto.prototype, 'items');
+  ValidateNested({ each: true })(SectionWrapperDto.prototype, 'items');
+  Type(() => ItemDto)(SectionWrapperDto.prototype, 'items');
+  if (dedupeField) {
+    HasNoDuplicateField(dedupeField)(SectionWrapperDto.prototype, 'items');
+  }
+  return SectionWrapperDto;
+}
+
 export class CreateCurriculumDto {
 
   @IsArray()
@@ -184,6 +243,7 @@ export class CreateCurriculumDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => IdiomaDto)
+  @HasNoDuplicateField('idioma')
   idiomas: IdiomaDto[];
 
   @IsArray()

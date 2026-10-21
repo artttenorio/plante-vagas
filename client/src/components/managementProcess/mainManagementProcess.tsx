@@ -15,6 +15,7 @@ import {
   Vaga,
 } from "@/services/vaga";
 import { getContagemPorEtapa, type ContagemEtapa } from "@/services/candidatura";
+import { getUserId, getUserType } from "@/services/api";
 
 const MainManagementProcess = () => {
   const [searchParams] = useSearchParams();
@@ -127,6 +128,18 @@ const MainManagementProcess = () => {
     return (
       <div className="flex justify-center items-center h-screen font-SecondFont">
         <p className="text-red-500">{erro}</p>
+      </div>
+    );
+  }
+
+  // O GET da vaga é público (a página da vaga usa a mesma rota), então o
+  // backend não barra a leitura — só as escritas, que falham silenciosamente
+  // aqui (o botão ficava preso em "Salvando..." sem nenhum aviso, BUG039).
+  // A checagem de dono tem que acontecer no front antes de mostrar a tela.
+  if (vaga && (getUserType() !== "company" || Number(getUserId()) !== vaga.empresaId)) {
+    return (
+      <div className="flex justify-center items-center h-screen font-SecondFont">
+        <p className="text-red-500">Você não tem permissão para gerenciar o processo seletivo desta vaga.</p>
       </div>
     );
   }

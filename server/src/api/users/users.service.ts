@@ -2,18 +2,26 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/api/prisma/prisma.service';
 import { CreateUserDTO } from './dto/create-user-dto';
 import { User } from './entities/user.entity';
-import { Prisma } from 'generated/prisma';
 import * as bcrypt from 'bcrypt';
-import { find } from 'rxjs';
 import { UpdateUserDTO } from './dto/update-user-deto';
+import { omitPassword } from 'src/common/omitPassword';
 
 @Injectable()
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
-  async createUser(createUser: CreateUserDTO): Promise<User> {
+  async createUser(createUser: CreateUserDTO): Promise<Omit<User, 'password'>> {
+    // E-mail é o identificador de login em ambas as tabelas (candidato e
+    // empresa) e não diferencia maiúsculas de minúsculas — sem isso, dava
+    // pra criar duas contas pro "mesmo" e-mail só mudando a capitalização,
+    // ou uma conta de candidato e outra de empresa com o e-mail idêntico.
+    const emailNormalizado = createUser.email.toLowerCase();
+
     const existEmail = await this.prisma.userCandidate.findFirst({
-      where: { email: createUser.email },
+      where: { email: emailNormalizado },
+    });
+    const existEmailEmpresa = await this.prisma.userCompany.findFirst({
+      where: { email: emailNormalizado },
     });
     const existCpf = await this.prisma.userCandidate.findFirst({
       where: { cpf: createUser.cpf },
@@ -23,16 +31,17 @@ export class UserService {
       throw new ConflictException('Cpf já cadastrado');
     }
 
-    if (existEmail) {
+    if (existEmail || existEmailEmpresa) {
       throw new ConflictException('email já cadastrado');
     }
     const hashedPassword = await bcrypt.hash(createUser.password, 10);
 
     const { address, ...userData } = createUser;
 
-    return this.prisma.userCandidate.create({
+    const created = await this.prisma.userCandidate.create({
       data: {
         ...userData,
+        email: emailNormalizado,
         password: hashedPassword,
         Address: {
           create: {
@@ -51,13 +60,7 @@ export class UserService {
         Address: true,
       },
     });
-  }
-
-  async findAll(skip = 0, filters?: Prisma.UserCandidateWhereInput) {
-    return this.prisma.userCandidate.findMany({
-      skip,
-      where: filters,
-    });
+    return omitPassword(created);
   }
 
   async getInfo(userId: number) {
@@ -69,7 +72,7 @@ export class UserService {
       throw new ConflictException('Usuário não encontrado');
     }
     return {
-      user,
+      user: omitPassword(user),
     };
   }
 
@@ -113,22 +116,20 @@ export class UserService {
             }
         }
 
-         return this.prisma.userCandidate.update({
+         const updated = await this.prisma.userCandidate.update({
             where: { id: userId },
             data,
             include: { Address: true },
           });
-
-
-
-    
+         return omitPassword(updated);
     }
 
   async updatePhoto(userId: number, photoUrl: string) {
-    return this.prisma.userCandidate.update({
+    const updated = await this.prisma.userCandidate.update({
       where: { id: userId },
       data: { photoUrl },
     });
+    return omitPassword(updated);
   }
 
   async delete(userId: number){
@@ -141,8 +142,9 @@ export class UserService {
       throw new ConflictException('Usuário não encontrado');
     }
 
-    return this.prisma.userCandidate.delete({
+    const deleted = await this.prisma.userCandidate.delete({
       where: { id: findUser.id },
     });
+    return omitPassword(deleted);
   }
 }

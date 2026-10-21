@@ -33,8 +33,8 @@ export default function Certificate() {
     try {
       await saveSection("certificados", normalizeCertificates(certificates))
       toast.success("Certificado salvo com sucesso", { id: loadingToast })
-    } catch {
-      toast.error("Erro ao salvar certificado", { id: loadingToast })
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao salvar certificado", { id: loadingToast })
     }
   }
 

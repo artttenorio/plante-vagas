@@ -11,22 +11,19 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string) {
-    let user: any = await this.prisma.userCandidate.findUnique({
-      where: { email },
-    });
+    // E-mail não diferencia maiúsculas de minúsculas — igual no cadastro.
+    const emailNormalizado = email.toLowerCase();
 
-    if (!user) {
-      let user: any = await this.prisma.userCompany.findUnique({
-        where: { email },
-      });
-    }
+    let user: any = await this.prisma.userCandidate.findUnique({
+      where: { email: emailNormalizado },
+    });
 
     let userType: 'candidate' | 'company' | null = null;
 
     if (user) {
       userType = 'candidate';
     } else {
-      user = await this.prisma.userCompany.findUnique({ where: { email } });
+      user = await this.prisma.userCompany.findUnique({ where: { email: emailNormalizado } });
       if (user) {
         userType = 'company';
       }

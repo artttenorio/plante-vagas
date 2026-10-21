@@ -3,6 +3,7 @@ import SubHeader from "../../home-page/headers/subHeader";
 import { useUser } from "../userContext";
 import { toast } from "sonner";
 import { updateUser } from "../../../services/users";
+import { hashPassword } from "../../../utils/hashPassword";
 import { Lock, Info } from "lucide-react";
 
 const inputBase = "w-full px-4 py-3 rounded-xl border transition-all duration-200";
@@ -45,8 +46,8 @@ export default function InfoLogin() {
     const loadingToast = toast.loading("Atualizando senha...");
     try {
       await updateUser({
-        currentPassword: formData.currentPassword,
-        newPassword: formData.newPassword,
+        currentPassword: hashPassword(formData.currentPassword),
+        newPassword: hashPassword(formData.newPassword),
       });
       setIsEditing(false);
       toast.success("Senha atualizada com sucesso", { id: loadingToast });

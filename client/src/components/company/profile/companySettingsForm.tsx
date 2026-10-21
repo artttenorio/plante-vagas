@@ -7,6 +7,7 @@ import { phoneMask } from "../../masks/phoneMask";
 import { cepMask } from "../../masks/cepMask";
 import { updateCompanyCadastro, deleteCompany } from "@/services/company";
 import { clearSession } from "@/services/api";
+import { hashPassword } from "@/utils/hashPassword";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const CompanySettingsForm = () => {
@@ -106,7 +107,7 @@ const CompanySettingsForm = () => {
           postalCode: cep.replace("-", ""),
           state,
         },
-        ...(newPassword ? { currentPassword, newPassword } : {}),
+        ...(newPassword ? { currentPassword: hashPassword(currentPassword), newPassword: hashPassword(newPassword) } : {}),
       });
       await refreshUser();
       setCurrentPassword("");

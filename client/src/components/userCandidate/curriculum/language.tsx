@@ -34,8 +34,8 @@ export default function Language() {
     try {
       await saveSection("idiomas", normalizeIdiomas(lenguages))
       toast.success("Idioma salvo com sucesso", { id: loadingToast })
-    } catch {
-      toast.error("Erro ao salvar idioma", { id: loadingToast })
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao salvar idioma", { id: loadingToast })
     }
   }
 

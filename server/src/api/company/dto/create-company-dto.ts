@@ -1,5 +1,6 @@
 import { IsEmail, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsBrazilianPhone, IsCep, IsCityName, IsHttpUrl, IsNotBlank, IsNotFutureDate, IsValidCNPJ } from 'src/common/validators';
 
 export class AddressCompanyDTO {
   @IsOptional()
@@ -9,6 +10,7 @@ export class AddressCompanyDTO {
   state?: string;
 
   @IsNotEmpty()
+  @IsCityName()
   city: string;
 
   @IsNotEmpty()
@@ -24,6 +26,7 @@ export class AddressCompanyDTO {
   complement?: string;
 
   @IsNotEmpty()
+  @IsCep()
   postalCode: string;
 }
 
@@ -39,6 +42,7 @@ export class CompanyDto {
   name: string;
 
   @IsString()
+  @IsValidCNPJ()
   cnpj: string;
 
   @IsString()
@@ -48,12 +52,15 @@ export class CompanyDto {
   socialReason: string;
 
   @IsString()
+  @IsNotBlank()
   fantasyName: string;
 
   @IsString()
+  @IsBrazilianPhone()
   phone: string;
 
   @IsString()
+  @IsNotFutureDate()
   openingDate: string;
 
   @IsOptional()
@@ -70,6 +77,7 @@ export class CompanyDto {
 
   @IsOptional()
   @IsString()
+  @IsHttpUrl()
   websiteUrl?: string;
 
   @ValidateNested()

@@ -1,5 +1,6 @@
-import { IsArray, IsDateString, IsInt, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsDateString, IsInt, IsNumber, IsOptional, IsPositive, IsString, MaxLength, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { HasNoDuplicateNomes, IsNotAbsurdlyFarInFuture } from 'src/common/validators';
 
 class BeneficioDto {
   @IsString()
@@ -20,6 +21,7 @@ class EtapaDto {
 
   @IsOptional()
   @IsInt()
+  @Min(1)
   prazoDias?: number;
 }
 
@@ -31,6 +33,7 @@ export class ProcessoSeletivoDto {
   descricao: string;
 
   @IsDateString()
+  @IsNotAbsurdlyFarInFuture(5)
   dataInicio: string;
 
   @IsInt()
@@ -40,6 +43,7 @@ export class ProcessoSeletivoDto {
 
 export class CreateVagaDto {
   @IsString()
+  @MaxLength(100)
   nome: string;
 
   @IsString()
@@ -50,6 +54,7 @@ export class CreateVagaDto {
 
   @IsOptional()
   @IsNumber()
+  @IsPositive()
   salario?: number;
 
   @IsOptional()
@@ -63,6 +68,7 @@ export class CreateVagaDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BeneficioDto)
+  @HasNoDuplicateNomes()
   beneficios: BeneficioDto[];
 
   @IsArray()
@@ -73,6 +79,7 @@ export class CreateVagaDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => EtapaDto)
+  @HasNoDuplicateNomes()
   etapas: EtapaDto[];
 
   @ValidateNested()

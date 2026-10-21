@@ -1,6 +1,7 @@
 import { IsOptional, ValidateNested } from "class-validator";
 import { AddressDTO } from "./create-user-dto";
 import { Type } from "class-transformer";
+import { IsBrazilianPhone } from "src/common/validators";
 
 export class UpdateUserDTO {
 
@@ -23,6 +24,7 @@ address?: AddressDTO
 
 
 @IsOptional()
+@IsBrazilianPhone()
 phone?: string
 
 }

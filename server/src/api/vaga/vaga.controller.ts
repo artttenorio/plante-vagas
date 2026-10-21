@@ -13,6 +13,7 @@ import {
 import { VagaService, FindAllVagaQuery } from './vaga.service';
 import { CreateVagaDto, ProcessoSeletivoDto } from './dto/create-vaga.dto';
 import { UpdateVagaDto } from './dto/update-vaga.dto';
+import { EtapaBodyDto } from './dto/etapa.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt.auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -77,7 +78,7 @@ export class VagaController {
   @Roles('company')
   async updateEtapa(
     @Param('etapaId') etapaId: string,
-    @Body() body: { nome: string; descricao: string; prazoDias?: number },
+    @Body() body: EtapaBodyDto,
     @Req() req,
   ) {
     const empresaId = req.user.sub;
@@ -105,7 +106,7 @@ export class VagaController {
   @Roles('company')
   async addEtapa(
     @Param('id') id: string,
-    @Body() body: { nome: string; descricao: string; prazoDias?: number },
+    @Body() body: EtapaBodyDto,
     @Req() req,
   ) {
     const empresaId = req.user.sub;

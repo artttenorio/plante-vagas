@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CompanyService } from './company.service';
+import { CompanyDto } from './dto/create-company-dto';
 import { UpdateCompanyProfileDto } from './dto/update-company-profile.dto';
 import { UpdateCompanyCadastroDto } from './dto/update-company-cadastro.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt.auth.guard';
@@ -25,7 +26,7 @@ export class CompanyController {
   constructor(private readonly comapanyService: CompanyService) {}
 
   @Post('singup')
-  async create(@Body() data: any): Promise<any> {
+  async create(@Body() data: CompanyDto): Promise<any> {
     const company = await this.comapanyService.createCompany(data);
 
     return {

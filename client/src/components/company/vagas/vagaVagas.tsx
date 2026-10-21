@@ -104,6 +104,9 @@ const VagaVagas = ({ vaga, onExcluida }: { vaga: Vaga; onExcluida?: (id: number)
           <h2 className="text-xl md:text-2xl font-bold text-deepGreen font-PrimaryFont group-hover:text-mediumGreen transition-colors duration-300 break-words">
             {vaga.nome}
           </h2>
+          {(vaga.empresa?.fantasyName || vaga.empresa?.name) && (
+            <p className="text-gray-500 text-sm mt-0.5">{vaga.empresa.fantasyName || vaga.empresa.name}</p>
+          )}
           <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 mt-3 text-gray-600 font-SecondFont text-sm">
             <span className="flex items-center gap-2">
               <Clock size={16} className="text-mediumGreen" />

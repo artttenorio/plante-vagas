@@ -7,6 +7,7 @@ import { deleteUser, updateUser, uploadUserPhoto } from "../../../services/users
 import { clearSession } from "../../../services/api";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Lock, Info, UserCircle, Image as ImageIcon } from "lucide-react";
+import { phoneMask } from "@/components/masks/phoneMask";
 
 const inputBase = "w-full px-4 py-3 rounded-xl border transition-all duration-200";
 const inputLocked = `${inputBase} bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200`;
@@ -42,7 +43,7 @@ export default function MyData() {
     : "";
 
   const handleEdit = () => {
-    setFormData({ phone: user.phone, disablePerson: user.disablePerson, gender: user.gender });
+    setFormData({ phone: phoneMask(user.phone), disablePerson: user.disablePerson, gender: user.gender });
     setIsEditing(true);
   };
 
@@ -64,7 +65,7 @@ export default function MyData() {
     const loadingToast = toast.loading("Salvando dados...");
     try {
       await updateUser({
-        phone: formData.phone || undefined,
+        phone: formData.phone.replace(/\D/g, "") || undefined,
         disablePerson: formData.disablePerson || undefined,
         gender: formData.gender || undefined,
       });
@@ -238,9 +239,9 @@ export default function MyData() {
               <label className={labelClass}>Telefone</label>
               <input
                 type="text"
-                value={isEditing ? formData.phone : user.phone}
+                value={isEditing ? formData.phone : phoneMask(user.phone)}
                 disabled={!isEditing}
-                onChange={(e) => setFormData((f) => ({ ...f, phone: e.target.value }))}
+                onChange={(e) => setFormData((f) => ({ ...f, phone: phoneMask(e.target.value) }))}
                 className={isEditing ? inputEditable : inputLocked}
                 placeholder={isEditing ? "Digite o telefone" : ""}
               />

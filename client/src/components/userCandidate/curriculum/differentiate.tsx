@@ -55,8 +55,12 @@ export default function Differentiate() {
   const [selecionados_2, setSelecionados_2] = useState<string[]>([]);
 
   useEffect(() => {
-    const descricoes = curriculum.diferenciais.map((d: any) => d.descricao);
-    setSelecionados_1(descricoes.filter((d: string) => adjetivos.includes(d)));
+    setSelecionados_1(
+      curriculum.diferenciais.filter((d: any) => (d.grupo ?? 1) === 1).map((d: any) => d.descricao)
+    );
+    setSelecionados_2(
+      curriculum.diferenciais.filter((d: any) => d.grupo === 2).map((d: any) => d.descricao)
+    );
   }, [curriculum.diferenciais]);
 
   const toggleSelecionado = (adj: string) => {
@@ -71,34 +75,29 @@ export default function Differentiate() {
     );
   };
 
-  const handleSave1 = async () => {
+  const combinarGrupos = (grupo1: string[], grupo2: string[]) => [
+    ...grupo1.map((d) => ({ descricao: d, grupo: 1 })),
+    ...grupo2.map((d) => ({ descricao: d, grupo: 2 })),
+  ];
+
+  const salvar = async (grupo1: string[], grupo2: string[]) => {
     const loadingToast = toast.loading("Salvando diferenciais...");
     try {
-      const combined = [...new Set([...selecionados_1, ...selecionados_2])].map((d) => ({ descricao: d }));
-      await saveSection("diferenciais", combined);
+      await saveSection("diferenciais", combinarGrupos(grupo1, grupo2));
       toast.success("Diferenciais salvos com sucesso", { id: loadingToast });
     } catch {
       toast.error("Erro ao salvar diferenciais", { id: loadingToast });
     }
   };
 
-  const handleSave2 = async () => {
-    const loadingToast = toast.loading("Salvando diferenciais...");
-    try {
-      const combined = [...new Set([...selecionados_1, ...selecionados_2])].map((d) => ({ descricao: d }));
-      await saveSection("diferenciais", combined);
-      toast.success("Diferenciais salvos com sucesso", { id: loadingToast });
-    } catch {
-      toast.error("Erro ao salvar diferenciais", { id: loadingToast });
-    }
-  };
+  const handleSave1 = () => salvar(selecionados_1, selecionados_2);
+  const handleSave2 = () => salvar(selecionados_1, selecionados_2);
 
   const handleDelete1 = async () => {
     const loadingToast = toast.loading("Excluindo...");
     try {
       setSelecionados_1([]);
-      const combined = selecionados_2.map((d) => ({ descricao: d }));
-      await saveSection("diferenciais", combined);
+      await saveSection("diferenciais", combinarGrupos([], selecionados_2));
       toast.success("Características removidas com sucesso!", { id: loadingToast });
     } catch {
       toast.error("Erro ao excluir características.", { id: loadingToast });
@@ -109,8 +108,7 @@ export default function Differentiate() {
     const loadingToast = toast.loading("Excluindo...");
     try {
       setSelecionados_2([]);
-      const combined = selecionados_1.map((d) => ({ descricao: d }));
-      await saveSection("diferenciais", combined);
+      await saveSection("diferenciais", combinarGrupos(selecionados_1, []));
       toast.success("Características removidas com sucesso!", { id: loadingToast });
     } catch {
       toast.error("Erro ao excluir características.", { id: loadingToast });

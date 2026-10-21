@@ -55,8 +55,8 @@ export default function AcademicInfo() {
     try {
       await saveSection("formacoes", formatFormacoes(infoAcademics))
       toast.success("Informações acadêmicas salvas com sucesso", { id: loadingToast })
-    } catch {
-      toast.error("Falha ao salvar formação acadêmica", { id: loadingToast })
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao salvar formação acadêmica", { id: loadingToast })
     }
   }
 

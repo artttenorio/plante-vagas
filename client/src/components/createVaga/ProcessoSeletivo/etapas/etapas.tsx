@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { Plus, Loader2 } from "lucide-react";
 import { useVagaCreate } from "../../VagaCreateContext";
 import { createVaga, updateVaga } from "@/services/vaga";
+import { parseSalarioBR } from "@/utils/parseSalario";
 
 interface EtapaForm {
   nome: string;
@@ -35,6 +36,28 @@ const Etapas = ({ vagaId }: { vagaId?: number }) => {
       setErro("Todas as etapas precisam ter um nome.");
       return;
     }
+    const nomesVistos = new Set<string>();
+    const nomeRepetido = etapas.find((e) => {
+      const chave = e.nome.trim().toLowerCase();
+      if (nomesVistos.has(chave)) return true;
+      nomesVistos.add(chave);
+      return false;
+    });
+    if (nomeRepetido) {
+      setErro(`Já existe uma etapa chamada "${nomeRepetido.nome.trim()}" — escolha nomes diferentes.`);
+      return;
+    }
+    const prazoInvalido = etapas.find(
+      (e) => e.prazoDias.trim() && (!Number.isInteger(Number(e.prazoDias)) || Number(e.prazoDias) <= 0),
+    );
+    if (prazoInvalido) {
+      setErro("O prazo da etapa deve ser um número inteiro de dias maior que zero.");
+      return;
+    }
+    if (data.salario.trim() && parseSalarioBR(data.salario) === null) {
+      setErro("Digite um salário válido (ex: 2500 ou 2.500,00), maior que zero.");
+      return;
+    }
     setLoading(true);
     setErro("");
     try {
@@ -42,9 +65,7 @@ const Etapas = ({ vagaId }: { vagaId?: number }) => {
         nome: data.nome,
         cargo: data.cargo,
         descricao: data.descricao,
-        salario: data.salario
-          ? parseFloat(data.salario.replace(/[^0-9,.]/g, "").replace(",", "."))
-          : undefined,
+        salario: data.salario.trim() ? parseSalarioBR(data.salario) ?? undefined : undefined,
         area: data.area || undefined,
         modalidade: data.modalidade || undefined,
         beneficios: data.beneficios.map((nome) => ({ nome })),

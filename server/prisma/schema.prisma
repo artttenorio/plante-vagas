@@ -273,6 +273,10 @@ model Idioma {
 model Diferencial {
   id          Int       @id @default(autoincrement())
   descricao   String
+  // 1 = "quais características você tem", 2 = "quais características as
+  // pessoas acham que você deveria ter" — sem isso os dois grupos da tela
+  // de Diferenciais eram indistinguíveis depois de salvos (BUG013).
+  grupo       Int       @default(1)
   curriculoId Int
   curriculo   Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
 }

@@ -1,9 +1,24 @@
 import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { CreateCurriculumDto, CURRICULUM_SECTION_MODEL } from './dto/create-curriculum.dto';
+import {
+  CreateCurriculumDto,
+  CURRICULUM_SECTION_MODEL,
+  CURRICULUM_SECTION_ITEM_DTO,
+  CURRICULUM_SECTION_DEDUPE_FIELD,
+  createSectionWrapperDto,
+} from './dto/create-curriculum.dto';
 import { UpdateCurriculumDto } from './dto/update-curriculum.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from 'generated/prisma';
 import axios from 'axios';
+import { plainToInstance } from 'class-transformer';
+import { validate, ValidationError } from 'class-validator';
+
+function flattenValidationMessages(errors: ValidationError[]): string[] {
+  return errors.flatMap((erro) => [
+    ...Object.values(erro.constraints ?? {}),
+    ...flattenValidationMessages(erro.children ?? []),
+  ]);
+}
 
 @Injectable()
 export class CurriculumService {
@@ -201,6 +216,8 @@ export class CurriculumService {
       throw new BadRequestException(`Seção de currículo inválida: ${section}`);
     }
 
+    await this.validateSectionItems(section, items);
+
     const curriculo = await this.prisma.curriculo.findFirst({ where: { usuarioId: userId } });
 
     if (!curriculo) {
@@ -219,6 +236,26 @@ export class CurriculumService {
     await this.prisma.$transaction(operations);
 
     return delegate.findMany({ where: { curriculoId } });
+  }
+
+  /**
+   * Valida a lista de itens de uma seção do currículo contra a DTO certa
+   * (campos obrigatórios, datas, duplicados) antes de gravar — ver nota em
+   * createSectionWrapperDto sobre por que isso não acontece sozinho via
+   * ValidationPipe nesse endpoint.
+   */
+  private async validateSectionItems(section: string, items: Record<string, any>[]) {
+    const ItemDto = CURRICULUM_SECTION_ITEM_DTO[section];
+    if (!ItemDto) return;
+
+    const WrapperDto = createSectionWrapperDto(ItemDto, CURRICULUM_SECTION_DEDUPE_FIELD[section]);
+    const instance = plainToInstance(WrapperDto, { items });
+    const errors = await validate(instance as object, { whitelist: false });
+
+    if (errors.length > 0) {
+      const mensagens = flattenValidationMessages(errors);
+      throw new BadRequestException(mensagens.length ? mensagens : 'Dados inválidos');
+    }
   }
 
   async remove(id:number, userId: number) {

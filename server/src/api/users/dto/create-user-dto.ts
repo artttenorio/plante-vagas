@@ -1,5 +1,6 @@
 import { IsEmail, IsNotEmpty, IsOptional, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsBrazilianPhone, IsCep, IsCityName, IsFullName, IsSaneBirthDate, IsValidCPF } from 'src/common/validators';
 
 export class AddressDTO {
   @IsOptional()
@@ -9,6 +10,7 @@ export class AddressDTO {
   state?: string;
 
   @IsNotEmpty()
+  @IsCityName()
   city: string;
 
   @IsNotEmpty()
@@ -24,6 +26,7 @@ export class AddressDTO {
   complement?: string;
 
   @IsNotEmpty()
+  @IsCep()
   postalCode: string;
 }
 
@@ -36,15 +39,19 @@ export class CreateUserDTO {
   password: string;
 
   @IsNotEmpty()
+  @IsFullName()
   name: string;
 
   @IsNotEmpty()
+  @IsSaneBirthDate(14)
   dateNasc: string;
 
   @IsNotEmpty()
+  @IsValidCPF()
   cpf: string;
 
   @IsNotEmpty()
+  @IsBrazilianPhone()
   phone: string;
 
   @IsNotEmpty()

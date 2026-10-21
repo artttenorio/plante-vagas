@@ -485,6 +485,17 @@ export class VagaService {
     if (!etapa) throw new ConflictException('Etapa não encontrada');
     if (etapa.vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão');
 
+    const nomeDuplicado = await this.prisma.etapaProcessoSeletivo.findFirst({
+      where: {
+        vagaId: etapa.vagaId,
+        id: { not: etapaId },
+        nome: { equals: data.nome.trim(), mode: 'insensitive' },
+      },
+    });
+    if (nomeDuplicado) {
+      throw new ConflictException('Já existe uma etapa com esse nome nesta vaga');
+    }
+
     return this.prisma.etapaProcessoSeletivo.update({
       where: { id: etapaId },
       data: { nome: data.nome, descricao: data.descricao, prazoDias: data.prazoDias },
@@ -647,6 +658,13 @@ export class VagaService {
 
     if (!vaga || vaga.deletedAt) throw new ConflictException('Vaga não encontrada');
     if (vaga.empresaId !== empresaId) throw new ConflictException('Sem permissão');
+
+    const nomeDuplicado = await this.prisma.etapaProcessoSeletivo.findFirst({
+      where: { vagaId, nome: { equals: etapa.nome.trim(), mode: 'insensitive' } },
+    });
+    if (nomeDuplicado) {
+      throw new ConflictException('Já existe uma etapa com esse nome nesta vaga');
+    }
 
     const totalEtapas = await this.prisma.etapaProcessoSeletivo.count({ where: { vagaId } });
 

@@ -49,8 +49,8 @@ export default function ProfessionalInfo() {
     try {
       await saveSection("experiencias", formatExperiencias(experiencias))
       toast.success("Experiência salva com sucesso!", { id: loadingToast })
-    } catch {
-      toast.error("Erro ao salvar experiência.", { id: loadingToast })
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao salvar experiência.", { id: loadingToast })
     }
   }
 

@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { getPublicCompany, type PublicCompany } from "@/services/company";
 import { favoritarEmpresa, desfavoritarEmpresa, getMinhasFavoritas } from "@/services/favoritos";
-import { getUserType } from "@/services/api";
+import { getToken, getUserType, podeUsarAcoesDeCandidato } from "@/services/api";
 import { toast } from "sonner";
 
 const CompanyPublicProfile = () => {
@@ -33,6 +33,10 @@ const CompanyPublicProfile = () => {
   const favoritadaAlteradaPeloUsuario = useRef(false);
 
   const ehCandidatoLogado = getUserType() === "candidate";
+  // Visitante deslogado também vê o botão — clicar nele é que pede login,
+  // igual "Salvar vaga"/"Candidatar-se". Só quem está logado como empresa
+  // não vê, porque a API recusaria mesmo.
+  const mostrarFavoritar = podeUsarAcoesDeCandidato();
 
   useEffect(() => {
     if (!empresaId) return;
@@ -57,6 +61,10 @@ const CompanyPublicProfile = () => {
   }, [ehCandidatoLogado, empresaId]);
 
   const handleFavoritar = async () => {
+    if (!getToken()) {
+      navigate("/login");
+      return;
+    }
     favoritadaAlteradaPeloUsuario.current = true;
     setFavoritando(true);
     try {
@@ -130,7 +138,7 @@ const CompanyPublicProfile = () => {
                   )}
                 </div>
 
-                {ehCandidatoLogado && (
+                {mostrarFavoritar && (
                   <button
                     onClick={handleFavoritar}
                     disabled={favoritando}

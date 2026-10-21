@@ -6,22 +6,29 @@ import { UpdateCompanyCadastroDto } from './dto/update-company-cadastro.dto';
 import { Company } from './entities/company.entity';
 import * as bcrypt from 'bcrypt';
 import { normalizeText } from '../../common/normalizeText';
+import { omitPassword } from '../../common/omitPassword';
 
 @Injectable()
 export class CompanyService {
   constructor(private prisma: PrismaService) {}
 
-  async createCompany(createCompany: CompanyDto): Promise<Company> {
-    console.log(createCompany);
+  async createCompany(createCompany: CompanyDto): Promise<Omit<Company, 'password'>> {
+    // E-mail é o identificador de login em ambas as tabelas (candidato e
+    // empresa) e não diferencia maiúsculas de minúsculas.
+    const emailNormalizado = createCompany.email.toLowerCase();
+
     const existEmail = await this.prisma.userCompany.findFirst({
-      where: { email: createCompany.email },
+      where: { email: emailNormalizado },
+    });
+    const existEmailCandidato = await this.prisma.userCandidate.findFirst({
+      where: { email: emailNormalizado },
     });
 
     const existCnpj = await this.prisma.userCompany.findFirst({
       where: { cnpj: createCompany.cnpj },
     });
 
-    if (existEmail) {
+    if (existEmail || existEmailCandidato) {
       throw new ConflictException('Email já cadastrado');
     }
 
@@ -33,9 +40,10 @@ export class CompanyService {
 
     const { address, ...companyData } = createCompany;
 
-    return this.prisma.userCompany.create({
+    const created = await this.prisma.userCompany.create({
       data: {
         ...companyData,
+        email: emailNormalizado,
         password: hashedPassword,
         fantasyNameBusca: normalizeText(companyData.fantasyName),
         nameBusca: normalizeText(companyData.name),
@@ -57,6 +65,7 @@ export class CompanyService {
         Address: true,
       },
     });
+    return omitPassword(created);
   }
 
   async getInfo(userId: number) {
@@ -68,7 +77,7 @@ export class CompanyService {
       throw new ConflictException('Usuário não encontrado');
     }
     return {
-      user,
+      user: omitPassword(user),
     };
   }
 
@@ -110,11 +119,12 @@ export class CompanyService {
   }
 
   async updateProfile(userId: number, data: UpdateCompanyProfileDto) {
-    return this.prisma.userCompany.update({
+    const updated = await this.prisma.userCompany.update({
       where: { id: userId },
       data,
       include: { Address: true },
     });
+    return omitPassword(updated);
   }
 
   async updateCadastro(userId: number, data: UpdateCompanyCadastroDto) {
@@ -142,7 +152,7 @@ export class CompanyService {
       hashedPassword = await bcrypt.hash(newPassword, 10);
     }
 
-    return this.prisma.userCompany.update({
+    const updated = await this.prisma.userCompany.update({
       where: { id: userId },
       data: {
         ...rest,
@@ -163,6 +173,7 @@ export class CompanyService {
       },
       include: { Address: true },
     });
+    return omitPassword(updated);
   }
 
   async delete(userId: number) {
@@ -174,22 +185,25 @@ export class CompanyService {
       throw new ConflictException('Usuário não encontrado');
     }
 
-    return this.prisma.userCompany.delete({
+    const deleted = await this.prisma.userCompany.delete({
       where: { id: findCompany.id },
     });
+    return omitPassword(deleted);
   }
 
   async updateLogo(userId: number, logoUrl: string) {
-    return this.prisma.userCompany.update({
+    const updated = await this.prisma.userCompany.update({
       where: { id: userId },
       data: { logoUrl },
     });
+    return omitPassword(updated);
   }
 
   async updateBanner(userId: number, bannerUrl: string) {
-    return this.prisma.userCompany.update({
+    const updated = await this.prisma.userCompany.update({
       where: { id: userId },
       data: { bannerUrl },
     });
+    return omitPassword(updated);
   }
 }

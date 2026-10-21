@@ -14,18 +14,12 @@ export class UsersController {
   constructor(private readonly userService: UserService) {}
 
   @Post('signup')
-  async create(@Body() data: any): Promise<any> {
-    const { userData } = data;
+  async create(@Body('userData') userData: CreateUserDTO): Promise<any> {
     const user = await this.userService.createUser(userData);
 
     return {
       user,
     };
-  }
-
-  @Get()
-  async getUsers() {
-    return this.userService.findAll();
   }
 
   @Get('profile')

@@ -1,4 +1,4 @@
-import { Clock, Briefcase, DollarSign, CheckCircle2, ListChecks, Send, ArrowRight, Loader2 } from "lucide-react";
+import { Clock, Briefcase, DollarSign, MapPin, Laptop, CheckCircle2, ListChecks, Send, ArrowRight, Loader2 } from "lucide-react";
 import { timeAgo } from "@/utils/timeAgo";
 import type { Vaga } from "@/services/vaga";
 
@@ -16,6 +16,8 @@ const JobInformation = ({ vaga, onCandidatar, candidatando, candidatado, mostrar
     { icon: Clock, label: `Postada há ${timeAgo(vaga.createdAt)}`, color: "text-blue-600 bg-blue-50" },
     { icon: Briefcase, label: vaga.cargo, color: "text-purple-600 bg-purple-50" },
     { icon: DollarSign, label: vaga.salario ? `R$ ${vaga.salario.toLocaleString("pt-BR")}` : "A combinar", color: "text-emerald-600 bg-emerald-50" },
+    ...(vaga.area ? [{ icon: MapPin, label: vaga.area, color: "text-amber-600 bg-amber-50" }] : []),
+    ...(vaga.modalidade ? [{ icon: Laptop, label: vaga.modalidade, color: "text-sky-600 bg-sky-50" }] : []),
   ];
 
   const jobDescription = vaga.descricao

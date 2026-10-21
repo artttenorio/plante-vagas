@@ -4,11 +4,17 @@ import { Plus, X, Loader2 } from "lucide-react";
 import { useVagaCreate } from "../VagaCreateContext";
 import { updateVaga } from "@/services/vaga";
 import { AREAS_VAGA, MODALIDADES_VAGA } from "@/utils/vagaOptions";
+import { parseSalarioBR } from "@/utils/parseSalario";
+import { useUser } from "@/components/company/userContextCompany";
+
+const TITULO_MAX = 100;
 
 const VagaData = ({ onProximo, vagaId }: { onProximo: () => void; vagaId?: number }) => {
   const isEdit = !!vagaId;
   const { data, setData } = useVagaCreate();
-  const [erros, setErros] = useState<{ nome?: string; cargo?: string; descricao?: string }>({});
+  const { UserData } = useUser();
+  const nomeEmpresa = UserData.user.fantasyName || UserData.user.name;
+  const [erros, setErros] = useState<{ nome?: string; cargo?: string; descricao?: string; salario?: string }>({});
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
   const [novoBeneficio, setNovoBeneficio] = useState("");
@@ -17,17 +23,26 @@ const VagaData = ({ onProximo, vagaId }: { onProximo: () => void; vagaId?: numbe
   const maxCaracteres = 5000;
 
   const validate = () => {
-    const novosErros: { nome?: string; cargo?: string; descricao?: string } = {};
+    const novosErros: { nome?: string; cargo?: string; descricao?: string; salario?: string } = {};
     if (!data.nome.trim()) novosErros.nome = "Campo obrigatório";
+    else if (data.nome.trim().length > TITULO_MAX) novosErros.nome = `Máximo de ${TITULO_MAX} caracteres`;
     if (!data.cargo.trim()) novosErros.cargo = "Campo obrigatório";
     if (!data.descricao.trim()) novosErros.descricao = "Campo obrigatório";
+    if (data.salario.trim() && parseSalarioBR(data.salario) === null) {
+      novosErros.salario = "Digite um salário válido (ex: 2500 ou 2.500,00), maior que zero";
+    }
     setErros(novosErros);
     return Object.keys(novosErros).length === 0;
   };
 
   const adicionarBeneficio = () => {
-    if (!novoBeneficio.trim()) return;
-    setData({ beneficios: [...data.beneficios, novoBeneficio.trim()] });
+    const nome = novoBeneficio.trim();
+    if (!nome) return;
+    if (data.beneficios.some((b) => b.toLowerCase() === nome.toLowerCase())) {
+      setNovoBeneficio("");
+      return;
+    }
+    setData({ beneficios: [...data.beneficios, nome] });
     setNovoBeneficio("");
   };
 
@@ -59,9 +74,7 @@ const VagaData = ({ onProximo, vagaId }: { onProximo: () => void; vagaId?: numbe
         nome: data.nome,
         cargo: data.cargo,
         descricao: data.descricao,
-        salario: data.salario
-          ? parseFloat(data.salario.replace(/[^0-9,.]/g, "").replace(",", "."))
-          : undefined,
+        salario: data.salario.trim() ? parseSalarioBR(data.salario) ?? undefined : undefined,
         area: data.area || undefined,
         modalidade: data.modalidade || undefined,
         beneficios: data.beneficios.map((nome) => ({ nome })),
@@ -82,9 +95,12 @@ const VagaData = ({ onProximo, vagaId }: { onProximo: () => void; vagaId?: numbe
   return (
     <div className="min-h-screen bg-gray-50 py-8 sm:py-12 px-4 sm:px-8">
       <div className="max-w-3xl mx-auto bg-white p-8 sm:p-10 rounded-2xl shadow-sm border border-gray-100 font-SecondFont">
-        <h1 className="text-2xl font-bold text-deepGreen font-PrimaryFont mb-8">
+        <h1 className="text-2xl font-bold text-deepGreen font-PrimaryFont mb-1">
           Preencha os dados da vaga
         </h1>
+        {nomeEmpresa && (
+          <p className="text-gray-500 text-sm mb-7">Publicando como {nomeEmpresa}</p>
+        )}
 
         <div className="flex flex-col gap-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -94,6 +110,7 @@ const VagaData = ({ onProximo, vagaId }: { onProximo: () => void; vagaId?: numbe
                 type="text"
                 value={data.nome}
                 onChange={(e) => setData({ nome: e.target.value })}
+                maxLength={TITULO_MAX}
                 className={`${inputClass} ${erros.nome ? "border-red-400" : ""}`}
               />
               {erros.nome && <span className="text-red-500 text-xs mt-1 block">{erros.nome}</span>}
@@ -117,8 +134,9 @@ const VagaData = ({ onProximo, vagaId }: { onProximo: () => void; vagaId?: numbe
               value={data.salario}
               onChange={(e) => setData({ salario: e.target.value })}
               placeholder="Ex: 2500 ou deixe em branco pra combinar"
-              className={inputClass}
+              className={`${inputClass} ${erros.salario ? "border-red-400" : ""}`}
             />
+            {erros.salario && <span className="text-red-500 text-xs mt-1 block">{erros.salario}</span>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
