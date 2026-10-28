@@ -94,6 +94,7 @@ const SearchJobs = () => {
             setArea(areaInput);
             setModalidade(modalidadeInput);
           }}
+          sugestoes={Array.from(new Set(vagas.map((v) => v.cargo).filter(Boolean)))}
           temFiltroAtivo={!!(busca || regiao || area || modalidade)}
           onLimparFiltros={() => {
             setBuscaInput("");
@@ -123,8 +124,9 @@ const SearchJobs = () => {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-gray-600 font-SecondFont text-sm">Ordenar por:</span>
+                <label htmlFor="ordenar-vagas" className="text-gray-600 font-SecondFont text-sm">Ordenar por:</label>
                 <select
+                  id="ordenar-vagas"
                   value={ordenacao}
                   onChange={(e) => setOrdenacao(e.target.value as typeof ordenacao)}
                   className="bg-white border border-gray-200 rounded-lg px-4 py-2 font-SecondFont text-sm

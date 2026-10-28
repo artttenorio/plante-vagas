@@ -32,6 +32,7 @@ const Vagas = (props: {
           onClick={irParaEmpresa}
           disabled={!props.empresa?.id}
           title={nomeEmpresa ? `Ver perfil de ${nomeEmpresa}` : undefined}
+          aria-label={nomeEmpresa ? `Ver perfil de ${nomeEmpresa}` : "Logo da empresa"}
           className="w-24 h-24 md:w-28 md:h-28 bg-gray-50 rounded-2xl flex items-center justify-center
                       border border-gray-100 group-hover:border-mediumGreen/30 transition-colors duration-300 overflow-hidden
                       disabled:cursor-default"

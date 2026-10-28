@@ -21,7 +21,7 @@ const Footer = () => {
   ];
 
   return (
-    <footer id="contato" className="bg-oliveGreen">
+    <footer id="contato" className="bg-deepGreen">
       {/* Main Footer Content */}
       <div className="max-w-7xl mx-auto px-6 sm:px-12 lg:px-16 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
@@ -148,19 +148,19 @@ const Footer = () => {
       <div className="border-t border-white/10">
         <div className="max-w-7xl mx-auto px-6 sm:px-12 lg:px-16 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-white/60 font-SecondFont text-sm text-center md:text-left">
+            <p className="text-white/80 font-SecondFont text-sm text-center md:text-left">
               {currentYear} Plante Vagas. Todos os direitos reservados.
             </p>
             <div className="flex gap-6">
               <a
                 onClick={() => navigate("/termos-de-uso")}
-                className="text-white/60 hover:text-white font-SecondFont text-sm transition-colors duration-300 cursor-pointer"
+                className="text-white/80 hover:text-white font-SecondFont text-sm transition-colors duration-300 cursor-pointer"
               >
                 Termos de Uso
               </a>
               <a
                 onClick={() => navigate("/privacidade")}
-                className="text-white/60 hover:text-white font-SecondFont text-sm transition-colors duration-300 cursor-pointer"
+                className="text-white/80 hover:text-white font-SecondFont text-sm transition-colors duration-300 cursor-pointer"
               >
                 Privacidade
               </a>

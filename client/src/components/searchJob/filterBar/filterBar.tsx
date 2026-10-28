@@ -15,6 +15,7 @@ type Props = {
   onAplicarFiltros: () => void;
   temFiltroAtivo: boolean;
   onLimparFiltros: () => void;
+  sugestoes: string[];
 };
 
 const FilterBar = ({
@@ -31,6 +32,7 @@ const FilterBar = ({
   onAplicarFiltros,
   temFiltroAtivo,
   onLimparFiltros,
+  sugestoes,
 }: Props) => {
   return (
     <div className="bg-gradient-to-b from-paleGreen/50 to-white w-full py-8 sm:py-12">
@@ -42,16 +44,24 @@ const FilterBar = ({
         >
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
               <input
                 type="text"
                 value={buscaInput}
                 onChange={(e) => onBuscaInputChange(e.target.value)}
                 placeholder="Buscar por cargo, empresa ou palavra-chave..."
+                aria-label="Buscar por cargo, empresa ou palavra-chave"
+                list="sugestoes-busca-vagas"
+                autoComplete="off"
                 className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-xl
                          focus:outline-none focus:ring-2 focus:ring-mediumGreen focus:border-transparent
                          transition-all duration-300 font-SecondFont"
               />
+              <datalist id="sugestoes-busca-vagas">
+                {sugestoes.map((sugestao) => (
+                  <option key={sugestao} value={sugestao} />
+                ))}
+              </datalist>
             </div>
             <button
               type="submit"
@@ -84,6 +94,7 @@ const FilterBar = ({
               <select
                 value={regiaoInput}
                 onChange={(e) => onRegiaoInputChange(e.target.value)}
+                aria-label="Filtrar por região"
                 className="w-full pl-12 pr-10 py-4 bg-gray-50 border border-gray-200 rounded-xl
                          appearance-none cursor-pointer font-SecondFont text-gray-700
                          focus:outline-none focus:ring-2 focus:ring-mediumGreen focus:border-transparent
@@ -107,6 +118,7 @@ const FilterBar = ({
               <select
                 value={areaInput}
                 onChange={(e) => onAreaInputChange(e.target.value)}
+                aria-label="Filtrar por área"
                 className="w-full pl-12 pr-10 py-4 bg-gray-50 border border-gray-200 rounded-xl
                          appearance-none cursor-pointer font-SecondFont text-gray-700
                          focus:outline-none focus:ring-2 focus:ring-mediumGreen focus:border-transparent
@@ -130,6 +142,7 @@ const FilterBar = ({
               <select
                 value={modalidadeInput}
                 onChange={(e) => onModalidadeInputChange(e.target.value)}
+                aria-label="Filtrar por modalidade"
                 className="w-full pl-12 pr-10 py-4 bg-gray-50 border border-gray-200 rounded-xl
                          appearance-none cursor-pointer font-SecondFont text-gray-700
                          focus:outline-none focus:ring-2 focus:ring-mediumGreen focus:border-transparent

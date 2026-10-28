@@ -92,12 +92,14 @@ export default function Header() {
         {/* Mobile Menu Button */}
         <button
           onClick={() => setIsMenuOpen(!isMenuOpen)}
+          aria-label={isMenuOpen ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={isMenuOpen}
           className="lg:hidden p-2 rounded-lg hover:bg-paleGreen transition-colors duration-200"
         >
           {isMenuOpen ? (
-            <X size={28} className="text-deepGreen" />
+            <X size={28} className="text-deepGreen" aria-hidden="true" />
           ) : (
-            <Menu size={28} className="text-deepGreen" />
+            <Menu size={28} className="text-deepGreen" aria-hidden="true" />
           )}
         </button>
       </div>
