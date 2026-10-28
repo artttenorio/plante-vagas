@@ -103,6 +103,7 @@ export function setSession(session: Session) {
   if (session.userId !== undefined) {
     storage().setItem("userId", String(session.userId));
   }
+  storage().setItem("lastActivity", String(Date.now()));
 }
 
 export function clearSession() {
@@ -110,6 +111,28 @@ export function clearSession() {
   storage().removeItem("token");
   storage().removeItem("userType");
   storage().removeItem("userId");
+  storage().removeItem("lastActivity");
+}
+
+/**
+ * BUG043: a sessão só expirava quando o token vencia (24h) — sem controle
+ * de inatividade. Guarda o timestamp da última interação e expõe uma
+ * checagem que o App.tsx roda periodicamente, encerrando a sessão antes
+ * do prazo máximo se o usuário ficar inativo.
+ */
+const INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30 minutos
+
+export function recordActivity() {
+  if (getToken()) {
+    storage().setItem("lastActivity", String(Date.now()));
+  }
+}
+
+export function isSessionInactive(): boolean {
+  if (!getToken()) return false;
+  const last = storage().getItem("lastActivity");
+  if (!last) return false;
+  return Date.now() - Number(last) > INACTIVITY_LIMIT_MS;
 }
 
 function withAuthHeader(options: RequestInit, token: string | null): RequestInit {

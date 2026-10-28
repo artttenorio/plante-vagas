@@ -10,13 +10,13 @@ import { Lock, Info, UserCircle, Image as ImageIcon } from "lucide-react";
 import { phoneMask } from "@/components/masks/phoneMask";
 
 const inputBase = "w-full px-4 py-3 rounded-xl border transition-all duration-200";
-const inputLocked = `${inputBase} bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200`;
+const inputLocked = `${inputBase} bg-gray-100 text-gray-600 cursor-not-allowed border-gray-200`;
 const inputEditable = `${inputBase} bg-white text-gray-800 border-gray-200 focus:outline-none focus:ring-2 focus:ring-mediumGreen focus:border-transparent`;
 const labelClass = "block text-sm font-medium text-gray-700 mb-2";
 
 function LockedLabel() {
   return (
-    <span className="flex items-center gap-1 text-xs text-gray-400 ml-1">
+    <span className="flex items-center gap-1 text-xs text-gray-500 ml-1">
       <Lock className="w-3 h-3" aria-hidden="true" /> Não editável
     </span>
   );
@@ -121,7 +121,7 @@ export default function MyData() {
           {/* Foto de perfil */}
           <div className="mb-6">
             <label className={labelClass}>
-              Foto de perfil <span className="text-gray-400 font-normal">(opcional)</span>
+              Foto de perfil <span className="text-gray-500 font-normal">(opcional)</span>
             </label>
             <div className="flex items-center gap-5">
               <div className="w-20 h-20 bg-paleGreen/40 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">

@@ -130,7 +130,7 @@ const VagaData = ({ onProximo, vagaId }: { onProximo: () => void; vagaId?: numbe
           </div>
 
           <div>
-            <label htmlFor="vaga-salario" className={labelClass}>Salário <span className="text-gray-400 font-normal">(opcional)</span></label>
+            <label htmlFor="vaga-salario" className={labelClass}>Salário <span className="text-gray-500 font-normal">(opcional)</span></label>
             <input
               id="vaga-salario"
               type="text"
@@ -144,7 +144,7 @@ const VagaData = ({ onProximo, vagaId }: { onProximo: () => void; vagaId?: numbe
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="vaga-area" className={labelClass}>Área <span className="text-gray-400 font-normal">(opcional)</span></label>
+              <label htmlFor="vaga-area" className={labelClass}>Área <span className="text-gray-500 font-normal">(opcional)</span></label>
               <select
                 id="vaga-area"
                 value={data.area}
@@ -158,7 +158,7 @@ const VagaData = ({ onProximo, vagaId }: { onProximo: () => void; vagaId?: numbe
               </select>
             </div>
             <div>
-              <label htmlFor="vaga-modalidade" className={labelClass}>Modalidade <span className="text-gray-400 font-normal">(opcional)</span></label>
+              <label htmlFor="vaga-modalidade" className={labelClass}>Modalidade <span className="text-gray-500 font-normal">(opcional)</span></label>
               <select
                 id="vaga-modalidade"
                 value={data.modalidade}
@@ -174,7 +174,7 @@ const VagaData = ({ onProximo, vagaId }: { onProximo: () => void; vagaId?: numbe
           </div>
 
           <div>
-            <label htmlFor="vaga-beneficio-novo" className={labelClass}>Benefícios <span className="text-gray-400 font-normal">(opcional)</span></label>
+            <label htmlFor="vaga-beneficio-novo" className={labelClass}>Benefícios <span className="text-gray-500 font-normal">(opcional)</span></label>
             <div className="flex gap-3">
               <input
                 id="vaga-beneficio-novo"
@@ -222,7 +222,7 @@ const VagaData = ({ onProximo, vagaId }: { onProximo: () => void; vagaId?: numbe
           </div>
 
           <div>
-            <label htmlFor="vaga-requisito-novo" className={labelClass}>Requisitos e Qualificações <span className="text-gray-400 font-normal">(opcional)</span></label>
+            <label htmlFor="vaga-requisito-novo" className={labelClass}>Requisitos e Qualificações <span className="text-gray-500 font-normal">(opcional)</span></label>
             <div className="flex gap-3">
               <input
                 id="vaga-requisito-novo"
@@ -284,7 +284,7 @@ const VagaData = ({ onProximo, vagaId }: { onProximo: () => void; vagaId?: numbe
                 ? <span className="text-red-500 text-xs">{erros.descricao}</span>
                 : <span />
               }
-              <span className="text-gray-400 text-xs">{data.descricao.length}/{maxCaracteres}</span>
+              <span className="text-gray-500 text-xs">{data.descricao.length}/{maxCaracteres}</span>
             </div>
           </div>
 
