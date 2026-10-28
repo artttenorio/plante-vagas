@@ -32,6 +32,7 @@ const RegisterCompanyTwo = () => {
   const [cepLoading, setCepLoading] = useState(false);
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [consent, setConsent] = useState(false);
 
   const handleCnpjChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = cnpjMask(e.target.value);
@@ -104,6 +105,14 @@ const RegisterCompanyTwo = () => {
       toast.error("Preencha todos os campos para avançar", {
         description:
           "Todos os campos a seguir devem ser preenchidos para realizar o cadastro",
+        duration: 3000,
+      });
+      return;
+    }
+
+    if (!consent) {
+      toast.error("É necessário aceitar os termos para continuar", {
+        description: "Confirme que você leu os Termos de Uso e a Política de Privacidade",
         duration: 3000,
       });
       return;
@@ -464,6 +473,29 @@ const RegisterCompanyTwo = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Consentimento LGPD */}
+        <div className="flex items-start gap-3 pt-2">
+          <input
+            type="checkbox"
+            id="consent"
+            name="consent"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            className="mt-1 w-4 h-4 accent-deepGreen"
+          />
+          <label htmlFor="consent" className="text-sm text-gray-700">
+            Li e aceito os{" "}
+            <a href="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="text-deepGreen underline">
+              Termos de Uso
+            </a>{" "}
+            e a{" "}
+            <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-deepGreen underline">
+              Política de Privacidade
+            </a>
+            , e autorizo o tratamento dos meus dados conforme a LGPD.
+          </label>
         </div>
 
         {/* Submit Button */}

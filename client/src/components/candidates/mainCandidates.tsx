@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { ArrowLeft, Users, Loader2, Mail, Phone, Check, X, FileText, UserX, Award, EllipsisVertical } from "lucide-react";
+import { ArrowLeft, Users, Loader2, Mail, Phone, Check, X, FileText, UserX, Award, EllipsisVertical, Search } from "lucide-react";
 import { toast } from "sonner";
 import { getVagaById, Vaga } from "@/services/vaga";
 import {
@@ -42,6 +42,8 @@ export default function MainCandidates() {
   const [rejeitarAlvo, setRejeitarAlvo] = useState<Candidatura | null>(null);
   const [motivoRejeicao, setMotivoRejeicao] = useState("");
   const [rejeitando, setRejeitando] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState<"todos" | "analise" | "avancou" | "selecionado" | "rejeitado">("todos");
 
   useEffect(() => {
     if (vagaId) getVagaById(Number(vagaId)).then(setVaga);
@@ -62,6 +64,20 @@ export default function MainCandidates() {
   }, [vagaId, etapaId]);
 
   const etapa = vaga?.etapas.find((e) => e.id === Number(etapaId));
+
+  const statusDe = (c: Candidatura) =>
+    c.rejeitado ? "rejeitado" : c.selecionado ? "selecionado" : c.statusCandidato ? "avancou" : "analise";
+
+  const candidatosFiltrados = candidatos.filter((c) => {
+    if (filtroStatus !== "todos" && statusDe(c) !== filtroStatus) return false;
+    if (busca.trim()) {
+      const termo = busca.trim().toLowerCase();
+      const nome = c.candidato?.name?.toLowerCase() ?? "";
+      const email = c.candidato?.email?.toLowerCase() ?? "";
+      if (!nome.includes(termo) && !email.includes(termo)) return false;
+    }
+    return true;
+  });
 
   // Por `ordem` (a coluna que "reordenar etapas" mexe), não por `id` (ordem
   // de criação). O backend já manda `vaga.etapas` ordenado por `ordem` —
@@ -185,6 +201,34 @@ export default function MainCandidates() {
           )}
         </div>
 
+        {!loading && candidatos.length > 0 && (
+          <div className="flex flex-col sm:flex-row gap-3 pb-6">
+            <div className="relative flex-1">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+              <input
+                type="text"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar candidato por nome ou e-mail"
+                aria-label="Buscar candidato por nome ou e-mail"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-mediumGreen focus:border-transparent font-SecondFont"
+              />
+            </div>
+            <select
+              value={filtroStatus}
+              onChange={(e) => setFiltroStatus(e.target.value as typeof filtroStatus)}
+              aria-label="Filtrar candidatos por status"
+              className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-mediumGreen focus:border-transparent font-SecondFont"
+            >
+              <option value="todos">Todos os status</option>
+              <option value="analise">Em análise</option>
+              <option value="avancou">Avançou</option>
+              <option value="selecionado">Selecionado</option>
+              <option value="rejeitado">Rejeitado</option>
+            </select>
+          </div>
+        )}
+
         {!loading && candidatos.length === 0 && (
           <div className="flex flex-col items-center text-center bg-white rounded-2xl border border-gray-100 py-16 px-6">
             <div className="w-16 h-16 bg-paleGreen/40 rounded-2xl flex items-center justify-center mb-4">
@@ -199,9 +243,17 @@ export default function MainCandidates() {
           </div>
         )}
 
-        {!loading && candidatos.length > 0 && (
+        {!loading && candidatos.length > 0 && candidatosFiltrados.length === 0 && (
+          <div className="flex flex-col items-center text-center bg-white rounded-2xl border border-gray-100 py-16 px-6">
+            <p className="text-gray-700 font-SecondFont font-medium">
+              Nenhum candidato encontrado para esse filtro ou busca.
+            </p>
+          </div>
+        )}
+
+        {!loading && candidatosFiltrados.length > 0 && (
           <div className="flex flex-col gap-4 pb-8">
-            {candidatos.map((candidatura) => (
+            {candidatosFiltrados.map((candidatura) => (
               <div
                 key={candidatura.id}
                 className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 font-SecondFont"
