@@ -153,14 +153,14 @@ const Footer = () => {
             </p>
             <div className="flex gap-6">
               <a
-                href="#"
-                className="text-white/60 hover:text-white font-SecondFont text-sm transition-colors duration-300"
+                onClick={() => navigate("/termos-de-uso")}
+                className="text-white/60 hover:text-white font-SecondFont text-sm transition-colors duration-300 cursor-pointer"
               >
                 Termos de Uso
               </a>
               <a
-                href="#"
-                className="text-white/60 hover:text-white font-SecondFont text-sm transition-colors duration-300"
+                onClick={() => navigate("/privacidade")}
+                className="text-white/60 hover:text-white font-SecondFont text-sm transition-colors duration-300 cursor-pointer"
               >
                 Privacidade
               </a>

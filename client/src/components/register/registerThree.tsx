@@ -13,10 +13,13 @@ const RegisterThree = () => {
   const [street, setStreet] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [complement, setComplement] = useState("");
+  const [consent, setConsent] = useState(false);
 
   const handleSubmit = async () => {
     if (!cep || !district || !city || !street || !postalCode) {
       alert("Prencha todos os campos obrigatórios para poder cadastrar ");
+    } else if (!consent) {
+      alert("É necessário aceitar os Termos de Uso e a Política de Privacidade para cadastrar");
     } else {
       const payload = {
         userData: {
@@ -164,6 +167,28 @@ const RegisterThree = () => {
             placeholder="Informe o complemento (opcional)."
             className="border-2 border-deepGreen rounded-lg shadow-md p-3 pl-3 text-black bg-LightGray"
           />
+        </div>
+
+        <div className="flex items-start gap-3 mt-6 mb-2 max-w-md mx-auto">
+          <input
+            type="checkbox"
+            id="consent"
+            name="consent"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            className="mt-1 w-4 h-4 accent-deepGreen"
+          />
+          <label htmlFor="consent" className="text-sm text-gray-700 text-start">
+            Li e aceito os{" "}
+            <a href="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="text-deepGreen underline">
+              Termos de Uso
+            </a>{" "}
+            e a{" "}
+            <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-deepGreen underline">
+              Política de Privacidade
+            </a>
+            , e autorizo o tratamento dos meus dados conforme a LGPD.
+          </label>
         </div>
 
         <div className="grid justify-center">

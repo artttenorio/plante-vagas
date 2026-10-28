@@ -24,6 +24,8 @@ import Candidates from "@/pages/candidates";
 import CandidateCurriculo from "@/pages/candidates/curriculo";
 import { UserProviderCompany } from "@/components/company/userContextCompany";
 import CreateVaga from "@/pages/createVaga";
+import TermosDeUso from "@/pages/legal/TermosDeUso";
+import Privacidade from "@/pages/legal/Privacidade";
 
 export default function Router() {
   return (
@@ -38,6 +40,8 @@ export default function Router() {
             <Route path="/pagina-vaga/:id" element={<JobPage />} />
             <Route path="/empresa-publica/:id" element={<CompanyPublicProfile />} />
             <Route path="/pesquisa-de-vagas" element={<SearchJobs />} />
+            <Route path="/termos-de-uso" element={<TermosDeUso />} />
+            <Route path="/privacidade" element={<Privacidade />} />
             <Route path="/register" element={<RegisterUserOne />} />
             <Route path="/register-2" element={<RegisterUserTwo />} />
             <Route path="/register-3" element={<RegisterUserThree />} />
