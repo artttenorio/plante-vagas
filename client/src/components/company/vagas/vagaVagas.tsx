@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Briefcase, DollarSign, Tag, Clock, ArrowRight, Building2, Copy, Ban, RotateCcw, Loader2, Trash2 } from "lucide-react";
+import { Briefcase, DollarSign, Tag, Clock, ArrowRight, Building2, Copy, Ban, RotateCcw, Loader2, Trash2, Pencil } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Vaga, finalizarVaga, reabrirVaga, duplicarVaga, deleteVaga } from "@/services/vaga";
@@ -160,6 +160,7 @@ const VagaVagas = ({ vaga, onExcluida }: { vaga: Vaga; onExcluida?: (id: number)
           onClick={() => navigate(`/criar-vaga?vagaId=${vaga.id}`)}
           className="flex items-center justify-center gap-2 border border-gray-200 text-gray-700 px-6 py-3 rounded-xl font-SecondFont font-medium hover:border-deepGreen hover:text-deepGreen transition-colors duration-200"
         >
+          <Pencil size={16} aria-hidden="true" />
           Editar vaga
         </button>
         <button
