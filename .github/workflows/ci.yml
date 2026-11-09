@@ -13,6 +13,20 @@ jobs:
     defaults:
       run:
         working-directory: server
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       DATABASE_URL: "postgresql://test:test@localhost:5432/test"
       DIRECT_URL: "postgresql://test:test@localhost:5432/test"
@@ -39,8 +53,14 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Apply migrations (banco descartável do runner)
+        run: npx prisma migrate deploy
+
       - name: E2E / smoke tests
         run: npm run test:e2e
+
+      - name: Security tests (IDOR, senhas, injeção, bots)
+        run: npm run test:security
 
   client:
     name: Client (build + tests)
