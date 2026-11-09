@@ -31,22 +31,21 @@ const RegisterThree = () => {
           phone: formData.phone,
           gender: formData.gender,
           disablePerson: formData.disablePerson,
-        },
-
-        addressInfo: {
-          city: city,
-          district: district,
-          street: street,
-          number: postalCode,
-          complement: complement,
-          postalCode: cep,
-          country: "Brasil",
-          state: "PR",
+          address: {
+            city: city,
+            district: district,
+            street: street,
+            number: postalCode,
+            complement: complement,
+            postalCode: cep,
+            country: "Brasil",
+            state: "PR",
+          },
         },
       };
 
       try {
-        const response = await fetch(`${BASE_URL}/users/singup`, {
+        const response = await fetch(`${BASE_URL}/users/signup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
