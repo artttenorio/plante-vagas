@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useVagaCreate } from "../VagaCreateContext";
-import { dataInicioMinima, validarDataInicio } from "@/utils/dataInicio";
+import { dataInicioMaxima, dataInicioMinima, validarDataInicio } from "@/utils/dataInicio";
 
 const Processselective = ({ onProximo }: { onProximo: () => void }) => {
   const { data, setData } = useVagaCreate();
@@ -68,6 +68,7 @@ const Processselective = ({ onProximo }: { onProximo: () => void }) => {
                 type="date"
                 value={dataInicio}
                 min={dataInicioMinima(dataSalva)}
+                max={dataInicioMaxima()}
                 onChange={(e) => setDataInicio(e.target.value)}
                 className={inputClass}
               />

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import type { ProcessoSeletivoPayload } from "@/services/vaga";
-import { dataInicioMinima, validarDataInicio } from "@/utils/dataInicio";
+import { dataInicioMaxima, dataInicioMinima, validarDataInicio } from "@/utils/dataInicio";
 
 type Props = {
   initialValues: ProcessoSeletivoPayload;
@@ -64,6 +64,7 @@ export default function ProcessoSeletivoForm({ initialValues, onSubmit, submitLa
             type="date"
             value={dataInicio}
             min={dataInicioMinima(initialValues.dataInicio)}
+            max={dataInicioMaxima()}
             onChange={(e) => setDataInicio(e.target.value)}
             className={inputClass}
           />

@@ -232,6 +232,12 @@ export function IsHttpUrl(validationOptions?: ValidationOptions) {
       options: { message: `${propertyName} deve ser um link http(s) válido`, ...validationOptions },
       validator: {
         validate(value: unknown) {
+          // Campo opcional: @IsOptional só pula null/undefined, então o
+          // front manda "" quando o usuário deixa o site em branco (sem
+          // isso, BUG055/BUG056 — empresa sem site não conseguia salvar
+          // nem o logo nem a descrição, porque esse validador recusava
+          // a string vazia antes de chegar em qualquer outro campo).
+          if (value === '') return true;
           if (typeof value !== 'string') return false;
           try {
             const url = new URL(value);

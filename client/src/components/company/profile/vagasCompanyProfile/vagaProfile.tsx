@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Briefcase, DollarSign, Tag, Clock, Building2, Copy, Ban, RotateCcw, Loader2 } from "lucide-react";
+import { Briefcase, DollarSign, Tag, Clock, Building2, Copy, Ban, RotateCcw, Loader2, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Vaga, deleteVaga, finalizarVaga, reabrirVaga, duplicarVaga } from "@/services/vaga";
@@ -149,8 +149,15 @@ const VagaProfile = ({ vaga, onExcluida }: { vaga: Vaga; onExcluida?: (id: numbe
       {/* Actions */}
       <div className="flex flex-col items-stretch justify-center gap-3 w-full md:w-56 flex-shrink-0">
         <button
-          onClick={() => navigate(`/criar-vaga?vagaId=${vaga.id}`)}
+          onClick={() => navigate(`/gerenciar-processo?vagaId=${vaga.id}`)}
           className="flex items-center justify-center gap-2 bg-deepGreen text-white px-6 py-3 rounded-xl font-SecondFont font-semibold hover:bg-mediumGreen transition-colors duration-200"
+        >
+          Gerenciar processo
+          <ArrowRight size={16} aria-hidden="true" />
+        </button>
+        <button
+          onClick={() => navigate(`/criar-vaga?vagaId=${vaga.id}`)}
+          className="flex items-center justify-center gap-2 border border-gray-200 text-gray-700 px-6 py-3 rounded-xl font-SecondFont font-medium hover:border-deepGreen hover:text-deepGreen transition-colors duration-200"
         >
           Editar vaga
         </button>

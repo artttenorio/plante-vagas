@@ -28,6 +28,7 @@ type EtapaProps = {
   index: number;
   totalEtapas: number;
   podeExcluir: boolean;
+  etapaAnteriorAberta: boolean;
   contagem?: ContagemEtapa;
   movendo: boolean;
   onExcluir: (id: number) => void;
@@ -35,7 +36,7 @@ type EtapaProps = {
   onMover: (etapaId: number, direcao: "cima" | "baixo") => void;
 };
 
-const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, movendo, onExcluir, onAtualizar, onMover }: EtapaProps) => {
+const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, etapaAnteriorAberta, contagem, movendo, onExcluir, onAtualizar, onMover }: EtapaProps) => {
   const navigate = useNavigate();
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(etapa.nome);
@@ -289,7 +290,8 @@ const Etapa = ({ etapa, vagaId, index, totalEtapas, podeExcluir, contagem, moven
 
             <DropdownMenuItem
               onSelect={() => setConfirmFechar(true)}
-              disabled={fechada || fechando}
+              disabled={fechada || fechando || etapaAnteriorAberta}
+              title={etapaAnteriorAberta ? "Feche as etapas anteriores antes desta" : undefined}
               className="text-amber-700 focus:text-amber-700"
             >
               <Lock size={14} aria-hidden="true" />
