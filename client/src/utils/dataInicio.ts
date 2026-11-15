@@ -25,11 +25,28 @@ export function dataInicioMinima(dataSalva?: string): string {
   return hoje;
 }
 
+/**
+ * Maior data que o calendário deve aceitar: espelha o limite de 5 anos que
+ * a API já aplica (`IsNotAbsurdlyFarInFuture(5)`). Sem isso, uma data
+ * absurda (ex: 2999) só era recusada na hora de publicar a vaga, numa tela
+ * diferente da onde foi digitada, com mensagem técnica (BUG058).
+ */
+export function dataInicioMaxima(): string {
+  const limite = new Date();
+  limite.setFullYear(limite.getFullYear() + 5);
+  const mes = String(limite.getMonth() + 1).padStart(2, "0");
+  const dia = String(limite.getDate()).padStart(2, "0");
+  return `${limite.getFullYear()}-${mes}-${dia}`;
+}
+
 /** Mensagem de erro, ou "" se a data está válida. */
 export function validarDataInicio(dataInicio: string, dataSalva?: string): string {
   if (!dataInicio) return "A data de início é obrigatória.";
   if (dataInicio < dataInicioMinima(dataSalva)) {
     return "A data de início não pode ser anterior a hoje.";
+  }
+  if (dataInicio > dataInicioMaxima()) {
+    return "A data de início não pode estar a mais de 5 anos no futuro.";
   }
   return "";
 }

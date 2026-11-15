@@ -23,6 +23,10 @@ export default function EtapasDisplay({ etapas, vagaId, contagens, movendoId, on
           index={index + 1}
           totalEtapas={etapas.length}
           podeExcluir={etapas.length > 1}
+          // BUG057: a API só deixa fechar uma etapa depois de todas as
+          // anteriores fechadas — a tela precisa refletir isso, em vez de
+          // deixar o usuário confirmar e só então ver a recusa.
+          etapaAnteriorAberta={etapas.slice(0, index).some((e) => e.status === "aberta")}
           contagem={contagens.find((c) => c.etapaId === etapa.id)}
           movendo={movendoId === etapa.id}
           onExcluir={onExcluir}
